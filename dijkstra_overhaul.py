@@ -26,6 +26,9 @@ class Vertex:
         self.cost = float("inf")        # the total cost of the path to reach this vertex
         self.prev = None    # the previous Vertex in the path
         self.index = index      # the index into the intersections_gpd where this vertex is stored
+        self.neighbors = [] # a list of Vertex objects that can be reached by this Vertex - i.e. intersections that are one road segment away
+
+
         # self.connections2 = []
         self.connections = {}   # a dict of Vertex objects that can be reached by this Vertex - i.e. intersections that are one road segment away; keys are Vertex objects and values are Road objects
                 # each key is a pointer to another Vertex object; each value is the cost to reach that Vertex object from the current Vertex
@@ -192,8 +195,8 @@ Binary Min-Heap Functions (implemented with a list)
 '''
 
 class MinHeap:
-    def __init__(self):
-        self.heap = []        # a list representing a mininum priority binary heap; each element is a Vertex object
+    def __init__(self, length):
+        self.heap = list(np.zeros(length))        # a list representing a mininum priority binary heap; each element is a Vertex object; the length is equal to the number of intersections in the dataset
 
     # i is an index into the list
     def parent(self, i):
@@ -262,11 +265,6 @@ class MinHeap:
                 self.swap(self.heap, index, self.parent(i))
                 i = self.parent(i)
 
-
-
-
-
-
 '''
 start = time.time()
 adjacency_list = list(np.zeros(intersections_gpd.shape[0]))
@@ -286,11 +284,59 @@ for intersection in intersections_gpd.itertuples():
     i += 1
 
 end = time.time()
-
-
 print(adjacency_list)
 print(f'Time to build the adjacency list: {end - start}')
 '''
+
+
+# Updates in late August:
+# initialize graph
+# The graph has this structure: {index: [(index, weight), (index, weight)],
+#                                index: [(index, weight)], etc.}
+# The indices in the graph are intersections, and the weights are the costs to reach neighboring intersections.
+graph = {}
+length = intersections_gpd.shape[0]
+for i in range(length):
+    neighboring_intersections = convert_string_to_list(intersections_gpd.loc[i]['NeighboringIntersections'])
+    graph[i] = neighboring_intersections
+#    print(neighboring_intersections)
+print(graph)
+
+# Create a minimum binary heap. Keys are the indices that correspond to the graph. Values are the weight to reach each index from the source node.
+# Each node also has pointers to its neighboring nodes.
+my_heap = MinHeap(length)
+
+# Create a Vertex object for each intersection. Right now, the neighbor attribute of each Vertex object is empty
+for i in range(length):
+    my_heap.heap[i] = Vertex(i)
+
+# Set the cost for the starting intersection to be zero
+my_heap.heap[source].cost = 0
+
+# Update the neighbors attribute for each Vertex in the heap
+for i in range(length):
+    neighboring_intersections = convert_string_to_list(intersections_gpd.loc[i]['NeighboringIntersections'])
+    # neighboring_intersections is a list of tuples: [(intersection, cost), (intersection, cost), (intersection, cost)]. We need to extract the intersections from this list.
+    neighboring_intersections = [x[0] for x in neighboring_intersections]
+    for intersection in neighboring_intersections:
+        my_heap.heap[i].neighbors.append(my_heap.heap[intersection])
+print(my_heap.heap[4].neighbors)
+
+sys.exit()
+
+
+
+
+
+
+###################################################################################################
+###################################################################################################
+
+
+
+
+
+
 
 # initialize graph
 new_graph = {}
