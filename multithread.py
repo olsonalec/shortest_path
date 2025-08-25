@@ -63,5 +63,5 @@ if __name__ == '__main__':
     end_time = time.time()
     print(f'Total time: {end_time - start_time}')
 
-    intersections.to_file("data/Plymouth_Intersections_Prepped2.geojson")
-    roads.to_file("data/Plymouth_Roads_Prepped2.geojson")
+    intersections.to_file("data/Plymouth_Intersections_Prepped3.geojson")
+    roads.to_file("data/Plymouth_Roads_Prepped3.geojson")

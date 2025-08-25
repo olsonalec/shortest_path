@@ -8,13 +8,13 @@ import sys
 
 start_time = time.time()
 roads_gpd = gpd.read_file('data/Plymouth_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('data/Plymouth_Intersections_Prepped2.geojson')
+intersections_gpd = gpd.read_file('data/Plymouth_Intersections_Prepped3.geojson')
 end_time = time.time()
 print(f'Time to read the geojson files: {end_time - start_time}')
 
 
-source = 0     # an intersection
-dest = 2       # an intersection
+source = 2     # an intersection
+dest = 10       # an intersection
 
 class Road:
     def __init__(self, index, cost):
@@ -26,12 +26,8 @@ class Vertex:
         self.cost = float("inf")        # the total cost of the path to reach this vertex
         self.prev = None    # the previous Vertex in the path
         self.index = index      # the index into the intersections_gpd where this vertex is stored
-        self.neighbors = [] # a list of Vertex objects that can be reached by this Vertex - i.e. intersections that are one road segment away
+        self.neighbors = [] # a list of pointers to Vertex objects that can be reached by this Vertex - i.e. intersections that are one road segment away
 
-
-        # self.connections2 = []
-        self.connections = {}   # a dict of Vertex objects that can be reached by this Vertex - i.e. intersections that are one road segment away; keys are Vertex objects and values are Road objects
-                # each key is a pointer to another Vertex object; each value is the cost to reach that Vertex object from the current Vertex
 
 '''
 A function to intialize the Vertex objects.
@@ -291,8 +287,8 @@ print(f'Time to build the adjacency list: {end - start}')
 
 # Updates in late August:
 # initialize graph
-# The graph has this structure: {index: [(index, weight), (index, weight)],
-#                                index: [(index, weight)], etc.}
+# The graph has this structure: {index: {neighboring_index: cost_to_reach, neighboring_index: cost_to_reach},
+#                                index: {neighboring_index: cost_to_reach}, etc.}
 # The indices in the graph are intersections, and the weights are the costs to reach neighboring intersections.
 graph = {}
 length = intersections_gpd.shape[0]
@@ -300,7 +296,7 @@ for i in range(length):
     neighboring_intersections = convert_string_to_list(intersections_gpd.loc[i]['NeighboringIntersections'])
     graph[i] = neighboring_intersections
 #    print(neighboring_intersections)
-print(graph)
+# print(graph)
 
 # Create a minimum binary heap. Keys are the indices that correspond to the graph. Values are the weight to reach each index from the source node.
 # Each node also has pointers to its neighboring nodes.
@@ -316,11 +312,55 @@ my_heap.heap[source].cost = 0
 # Update the neighbors attribute for each Vertex in the heap
 for i in range(length):
     neighboring_intersections = convert_string_to_list(intersections_gpd.loc[i]['NeighboringIntersections'])
+    # print(list(neighboring_intersections[0].keys()))
     # neighboring_intersections is a list of tuples: [(intersection, cost), (intersection, cost), (intersection, cost)]. We need to extract the intersections from this list.
-    neighboring_intersections = [x[0] for x in neighboring_intersections]
+    try:
+        neighboring_intersections = list(neighboring_intersections[0].keys())
+    except:     # for some reason, there are some intersections that don't have any neighbors
+        neighboring_intersections = []
     for intersection in neighboring_intersections:
         my_heap.heap[i].neighbors.append(my_heap.heap[intersection])
-print(my_heap.heap[4].neighbors)
+
+# Move the source node up to the top of the heap
+my_heap.heapify(source)
+
+def dijkstra_update(graph, dest, vertex_heap):
+    visited_vertices = []       # a list containing all the indices of all the vertices that have been visited so far
+    visited_intersections = []  # a list containing all the Vertex objects that have been visited so far
+
+    while dest not in visited_vertices:
+        # extract the vertex with lowest cost from the heap
+        min_vertex = vertex_heap.extract_min()
+
+        # add the vertex's index to the list of visited vertices
+        visited_vertices.append(min_vertex.index)
+
+        # update distances to the neighboring vertices
+        for neighbor in min_vertex.neighbors:       # each neighbor is a Vertex object
+            # new_cost = current cost + cost to reach the neighboring Vertex
+            new_cost = min_vertex.cost + graph[min_vertex.index][neighbor.index]
+            if new_cost < neighbor.cost:        # check to see if the new route to reach this Vertex is faster than the previous fastest route
+                neighbor.cost = new_cost
+                neighbor.prev = min_vertex
+                # update the heap accordingly
+
+                '''
+                We need to move the updated Vertex up the heap because its cost has lowered.
+                However, we don't know the index of the Vertex!!!
+                '''
+                #vertex_heap.heapify()
+        
+        # add the vertex's index to the list of visited vertices
+        visited_vertices.append(min_vertex.index)
+        visited_intersections.append(min_vertex)
+
+        # remove the current vertex from the heap
+        vertex_heap.remove
+        # graph.remove(min_vertex)
+    
+    return visited_intersections, visited_vertices
+
+
 
 sys.exit()
 
