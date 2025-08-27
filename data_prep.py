@@ -55,7 +55,7 @@ def map_function2(road, intersection_geodataframe):
 
 # Find the intersections that are one road segment away from the current intersection
 def map_function3(intersection, road_gdf):
-    connecting_intersections = [[]]
+    connecting_intersections = [[{}]]
     roads = intersection['Roads']
     roads = convert_string_to_list(roads)
     for road in roads:
@@ -63,5 +63,5 @@ def map_function3(intersection, road_gdf):
         new_intersections = convert_string_to_list(new_intersections)
         for int in new_intersections:
             if (int != intersection.name) and (int not in connecting_intersections[0]):
-                connecting_intersections[0].append({int: float(road_gdf.loc[road]['TimeToTravel'])})
+                connecting_intersections[0][0][int] = float(road_gdf.loc[road]['TimeToTravel'])
     return connecting_intersections

@@ -298,7 +298,7 @@ for i in range(length):
 #    print(neighboring_intersections)
 # print(graph)
 
-# Create a minimum binary heap. Keys are the indices that correspond to the graph. Values are the weight to reach each index from the source node.
+# Create a minimum binary heap. Each element in the heap is a Vertex object.
 # Each node also has pointers to its neighboring nodes.
 my_heap = MinHeap(length)
 
@@ -333,7 +333,7 @@ def dijkstra_update(graph, dest, vertex_heap):
         min_vertex = vertex_heap.extract_min()
 
         # add the vertex's index to the list of visited vertices
-        visited_vertices.append(min_vertex.index)
+        # visited_vertices.append(min_vertex.index)
 
         # update distances to the neighboring vertices
         for neighbor in min_vertex.neighbors:       # each neighbor is a Vertex object
