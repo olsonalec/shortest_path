@@ -4,12 +4,30 @@ import data_prep
 import time
 from pandarallel import pandarallel
 
+'''
+Function to convert speed in mph to m/s.
+
+Parameters:
+    speed (int) - speed limit of the road in mph
+
+Return value:
+    (float) the speed limit in m/s
+'''
 def mph_to_ms(speed):
-    # converts mph to m/s
     return (speed * 1609.344) / (60 * 60)
 
+
+'''
+Function to calculate the approximate time it takes to travel a road segment.
+
+Parameters:
+    speed (int) - speed limit of the road in mph
+    distance (float) - distance of the road segment in meters
+
+Return Value:
+    (float) time in seconds taken to travel the road segment
+'''
 def calculate_time(speed, distance):
-    # speed is in mph, distance is in meters
     speed_in_ms = mph_to_ms(speed)
     return distance / speed_in_ms
 

@@ -1,11 +1,3 @@
-def mph_to_ms(speed):
-    # converts mph to m/s
-    return (speed * 1609.344) / (60 * 60)
-
-def calculate_time(speed, distance):
-    # speed is in mph, distance is in meters
-    speed_in_ms = mph_to_ms(speed)
-    return distance / speed_in_ms
 
 # Find the roads that intersect with a given intersection
 def map_function(intersection, road_geodataframe):
