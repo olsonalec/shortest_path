@@ -34,4 +34,4 @@ With each iteration of the algorithm, many inefficient checks must be made:\
     5. Find the intersections that are one road segment away from each intersection, and calculate the time it takes to reach each one. Add this data to the intersections GeoDataFrame.
 - Steps 3, 4, and 5 from above use the `pandarallel` library to process these functions in parallel. On my machine (a 64-bit Windows 11 machine with an Intel i7-1185G7 processor and 16 GB of RAM), `pandarallel` uses 4 cores.
 - The data prep step for Plymouth took about 2 minutes (4,172 roads and 2,252 intersections).
-- The data prep step for Ramsey County took about 2 hours (24,763 roads and 13,840 intersections).
+- The data prep step for Ramsey County took about 1 hour, 50 minutes (24,763 roads and 13,840 intersections).
