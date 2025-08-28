@@ -3,8 +3,6 @@ import pandas as pd
 import data_prep
 import time
 from pandarallel import pandarallel
-import sys
-
 
 def mph_to_ms(speed):
     # converts mph to m/s
@@ -21,9 +19,6 @@ if __name__ == '__main__':
     roads = gpd.read_file('data/Ramsey_Roads.geojson')
     intersections = gpd.read_file('data/Ramsey_Intersections.geojson')
 
-    # print(roads.loc[0].Index)
-    # print(intersections.head())
-
     roads_speedlimit = []
 
     # Add speedlimits to roads that don't currently have one
@@ -37,8 +32,7 @@ if __name__ == '__main__':
     # Calculate approximate time to travel each road segment
     roads_time = [] # will store the amount of time it takes to travel each road segment
     for road in roads.itertuples():
-        # road_speed = road.Speedlimit    # Plymouth
-        road_speed = road.ROUTESPEED    # Ramsey
+        road_speed = road.ROUTESPEED
         road_distance = road.Shape_Length
         roads_time.append(calculate_time(road_speed, road_distance))
 
@@ -55,7 +49,7 @@ if __name__ == '__main__':
     # Find the intersections that intersection with a given road
     roads['Intersections'] = roads.parallel_apply(data_prep.map_function2, axis=1, args=(intersections,))
 
-    # Find the intersections that are one road segment away from a given intersection
+    # Find the intersections that are one road segment away from a given intersection, and calculate the time it takes to reach each one
     intersections['NeighboringIntersections'] = intersections.parallel_apply(data_prep.map_function3, axis=1, args=(roads,))
 
     # Calculating the speedlimit and time to travel could also be parallelized
