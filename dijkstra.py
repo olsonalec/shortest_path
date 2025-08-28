@@ -6,14 +6,14 @@ import math
 import sys
 
 start_time = time.time()
-roads_gpd = gpd.read_file('data/Plymouth_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('data/Plymouth_Intersections_Prepped.geojson')
+roads_gpd = gpd.read_file('data/Ramsey_Roads_Prepped.geojson')
+intersections_gpd = gpd.read_file('data/Ramsey_Intersections_Prepped.geojson')
 end_time = time.time()
 print(f'Time to read the geojson files: {end_time - start_time}')
 
 
-source = 0     # an intersection
-dest = 2000       # an intersection
+source = 2     # an intersection
+dest = 10000       # an intersection
 
 class Road:
     def __init__(self, index, cost):

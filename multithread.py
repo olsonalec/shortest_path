@@ -18,8 +18,8 @@ def calculate_time(speed, distance):
 
 if __name__ == '__main__':
 
-    roads = gpd.read_file('data/Plymouth_Roads_Prepped.geojson')
-    intersections = gpd.read_file('data/Plymouth_Intersections_Prepped.geojson')
+    roads = gpd.read_file('data/Ramsey_Roads.geojson')
+    intersections = gpd.read_file('data/Ramsey_Intersections.geojson')
 
     # print(roads.loc[0].Index)
     # print(intersections.head())
@@ -50,10 +50,10 @@ if __name__ == '__main__':
     pandarallel.initialize(progress_bar=True)
 
     # Find the roads that intersect with a given intersection
-    # intersections['Roads'] = intersections.parallel_apply(data_prep.map_function, axis=1, args=(roads,))
+    intersections['Roads'] = intersections.parallel_apply(data_prep.map_function, axis=1, args=(roads,))
 
     # Find the intersections that intersection with a given road
-    # roads['Intersections'] = roads.parallel_apply(data_prep.map_function2, axis=1, args=(intersections,))
+    roads['Intersections'] = roads.parallel_apply(data_prep.map_function2, axis=1, args=(intersections,))
 
     # Find the intersections that are one road segment away from a given intersection
     intersections['NeighboringIntersections'] = intersections.parallel_apply(data_prep.map_function3, axis=1, args=(roads,))
@@ -63,5 +63,5 @@ if __name__ == '__main__':
     end_time = time.time()
     print(f'Total time: {end_time - start_time}')
 
-    intersections.to_file("data/Plymouth_Intersections_Prepped3.geojson")
-    roads.to_file("data/Plymouth_Roads_Prepped3.geojson")
+    intersections.to_file("data/Ramsey_Intersections_Prepped.geojson")
+    roads.to_file("data/Ramsey_Roads_Prepped.geojson")
