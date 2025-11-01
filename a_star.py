@@ -5,12 +5,157 @@ import time
 import math
 
 
-roads_gpd = gpd.read_file('Ramsey_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('Ramsey_Intersections_Prepped.geojson')
+roads_gpd = gpd.read_file('data/Ramsey_Roads_Prepped.geojson')
+intersections_gpd = gpd.read_file('data/Ramsey_Intersections_Prepped.geojson')
 
 
 source = 2     # an intersection
 dest = 2000       # an intersection
+
+##########################################################################
+# Updates November 2025
+
+class Vertex:
+    def __init__(self, index, neighbors):
+        self.index = index
+        self.neighbors = neighbors
+
+class Node:
+    def __init__(self):
+        self.visited = False
+        self.cost = float("inf")
+        self.f = float("inf")
+        self.prev = None
+
+# Each coordinate is in UTM, so we can calculate Euclidean distance directly without having to convert to a different coordiante system.
+# (Ex. if the coordinates were in degrees, we'd have to convert them first.)
+# This is the heuristic function for A*
+def calculate_distance(start_x, start_y, end_x, end_y):
+    return ((((start_x - end_x) **2) + (start_y - end_y) ** 2) ** 0.5)
+
+
+##### NEED TO SET UP vertex AND graph PROPERLY BEFORE THIS FUNCTION WILL WORK
+# vertex is a Vertex object
+def expand_vertex(vertex, graph):
+    expanded_states = []
+    for i in range(len(vertex.neighbors)):
+        neighbor = vertex.neighbors[i]
+        expanded_states.append(Node(neighbor, graph[neighbor]))
+
+    return expanded_states
+
+
+# The following functions implement standard heap operations.
+
+# get the index of the parent node given a starting index i
+def parent(i):
+    return (i - 1) // 2
+
+# get the index of the left child node given a starting index i
+def left_child(i):
+    return i * 2 + 1
+
+# get the index of the right child node given a starting index i
+def right_child(i):
+    return i * 2 + 2
+
+# push an item onto the heap
+# runs in O(log2(n)) time because Python's append() operator runs in O(1) amortized time and heapify() runs in O(log2(n)) time
+#   item is a State object
+#   heap is the minimum binary heap, represented as a list
+#   lookup is a dictionary that is used to map State objects to their costs
+#       the keys are strings representing room numbers, and the values are Node objects
+def push(item, heap, lookup):
+    heap.append(item)
+    heap = heapify(-1, heap, lookup)
+    
+    return heap
+
+# swap two items in the heap
+# runs in O(1) time
+#   i and j are indices
+#   heap is the minimum binary heap, represented as a list
+def swap(i, j, heap):
+    temp = heap[i]
+    heap[i] = heap[j]
+    heap[j] = temp
+
+    return heap
+
+# move a node up the heap until it is in place
+# runs in O(log2(n)) time because the heap is a binary tree
+#   i is an index
+#   heap is the minimum binary heap, implemented as a list
+#   lookup is a dictionary that is used to map State objects to their costs
+#       the keys are strings representing room numbers, and the values are Node objects
+def heapify(i, heap, lookup):
+    parent_idx = parent(i)
+
+    # lookup[heap[x].position] is a Node that corresponds to a State
+    # lookup[heap[x].position].f is the f value for that Node
+    if (parent_idx >= 0) and (lookup[heap[i].position].f < lookup[heap[parent_idx].position].f):
+        heap = swap(i, parent_idx, heap)
+        heap = heapify(parent_idx, heap, lookup)
+
+    return heap
+
+# move a node down the heap until it is in place
+# runs in O(log2(n)) time because the heap is a binary tree
+#   i is an index
+#   heap is the minimum binary heap, implemented as a list
+#   lookup is a dictionary that is used to map State objects to their costs
+#       the keys are strings representing room numbers, and the values are Node objects
+def min_heapify(i, heap, lookup):
+    l = left_child(i)
+    r = right_child(i)
+    smallest = -1
+
+    # lookup[heap[x].position] is a Node that corresponds to a State
+    # lookup[heap[x].position].f is the f value for that Node
+
+    if (l < len(heap)) and (lookup[heap[l].position].f < lookup[heap[i].position].f):
+        smallest = l
+    else:
+        smallest = i
+
+    if (r < len(heap)) and (lookup[heap[r].position].f < lookup[heap[smallest].position].f):
+        smallest = r
+
+    if smallest != i:
+        heap = swap(i, smallest, heap)
+        heap = min_heapify(smallest, heap, lookup)
+    
+    return heap
+
+# remove the minimum element from the heap (it will be at the front because this is a minimum binary heap)
+# runs in O(log2(n)) time because Python's pop() function runs in O(1) time when removing the last element of a list, and min_heapify() runs in O(log2(n)) time
+#   heap is the minimum binary heap, implemented as a list
+#   lookup is a dictionary that is used to map State objects to their costs
+#       the keys are strings representing room numbers, and the values are Node objects
+def extract_min(heap, lookup):
+    if len(heap) == 0:
+        return None
+    
+    min = heap[0]
+
+    if len(heap) > 1:
+        '''
+        If there are multiple items in the heap:
+            - copy the last element to the front
+            - remove the element at the end
+            - call min_heapify to move this element to the correct place in the heap
+        '''
+        heap[0] = heap[-1]
+        heap.pop(-1)
+        heap = min_heapify(0, heap, lookup)
+
+    return min, heap
+
+
+
+##########################################################################
+
+
 
 class Road:
     def __init__(self, index, cost, speed, start_x, start_y, end_x, end_y):
@@ -138,6 +283,8 @@ def convert_sec_to_min(seconds):
 def add_buffer_time(minutes):
     return math.ceil(minutes * 1.1)  
 
+# Each coordinate is in UTM, so we can calculate Euclidean distance directly without having to convert to a different coordiante system.
+# (Ex. if the coordinates were in degrees, we'd have to convert them first.)
 def calculate_distance(start_x, start_y, end_x, end_y):
     return ((((start_x - end_x) **2) + (start_y - end_y) ** 2) ** 0.5)
 
