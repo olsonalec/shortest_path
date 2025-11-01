@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import ast
 import time
 import math
+import sys
 
 
 roads_gpd = gpd.read_file('data/Ramsey_Roads_Prepped.geojson')
@@ -43,6 +44,24 @@ def expand_vertex(vertex, graph):
         expanded_states.append(Node(neighbor, graph[neighbor]))
 
     return expanded_states
+
+'''
+The 'Intersections' and 'Roads' attributes in the Roads and Intersections Geodataframes, respectively, are represented as a nested list.
+If they were a one-dimensional list, GeoPandas would think that they represent geometry, which they don't.
+However, when reading these attributes from the dataframe, Python interprets them as strings.
+This is an example: '[[180, 240, 360]]'
+This function converts this string representation of a nested list into a 1-dimensional Python list.
+The example output would be [180, 240, 360], where each value is an integer.
+
+Parameter:
+    bad_string - a string representation of a nested list
+
+Return Value:
+    new_list[0] - a Python list representation of the input
+'''
+def convert_string_to_list(bad_string):
+    new_list = ast.literal_eval(bad_string)
+    return new_list[0]
 
 
 # The following functions implement standard heap operations.
@@ -150,6 +169,27 @@ def extract_min(heap, lookup):
         heap = min_heapify(0, heap, lookup)
 
     return min, heap
+
+
+def a_star(maze, starting_intersection, goal_intersection):
+    pass
+
+
+# each key is an index into the intersections GeoDataFrame
+# each value is a list of strings that are themselves indices into the intersections GeoDataFrame (i.e. intersections that are one road segment away from the key intersection)
+road_network = {}
+for intersection in intersections_gpd.itertuples():
+    index = intersection.Index
+    neighbors = convert_string_to_list(intersection.NeighboringIntersections)   # neighbors is now a list with one element, which is a dictionary
+        # the dictionary is structured {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
+    neighbors = neighbors[0]    # get the dictionary out of the list
+    neighbor_indices = list(neighbors.keys())
+    road_network[index] = neighbor_indices
+
+print(road_network)
+
+print(intersections_gpd.head())
+sys.exit()
 
 
 
