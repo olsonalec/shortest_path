@@ -41,7 +41,22 @@ def convert_meters_to_miles(meters):
 def heuristic(start_x, start_y, end_x, end_y, max_speed):
     distance = convert_meters_to_miles(calculate_distance(start_x, start_y, end_x, end_y))
     return distance / max_speed
-    
+
+'''
+Converts seconds into minutes and seconds.
+
+Parameter:
+    seconds (float) - the value of seconds
+
+Return Values:
+    min (int) - an integer representing the number of minutes
+    sec (int) - an integer representing the number of seconds
+'''
+def convert_sec_to_min(seconds):
+    return math.ceil(seconds / 60)
+
+def add_buffer_time(minutes):
+    return math.ceil(minutes * 1.1)
 
 
 ##### NEED TO SET UP vertex AND graph PROPERLY BEFORE THIS FUNCTION WILL WORK
@@ -83,6 +98,8 @@ def convert_string_to_list(bad_string):
 
 
 # The following functions implement standard heap operations.
+
+########## ELEMENTS IN THE HEAP SHOULD BE Vertex OBJECTS, NOT Node OBJECTS ##########
 
 # get the index of the parent node given a starting index i
 def parent(i):
@@ -306,6 +323,9 @@ else:
     path.append(destination_intersection.index)
     prev = nodes[destination_intersection.index].prev
 
+    # find time to travel this path
+    total_travel_time = convert_sec_to_min(nodes[destination_intersection.index].cost)
+
     while prev != None:
         path.append(prev)
         prev = nodes[prev].prev
@@ -316,6 +336,7 @@ else:
     print('}')
 
 print(f'Number of intersections selected: {len(path)}.')
+print(f'The time it will take to travel this route is approximately {add_buffer_time(total_travel_time)} minutes.')
 print(f'Time taken by A* to find the shortest path: {end_time - start_time} seconds.')
 
 

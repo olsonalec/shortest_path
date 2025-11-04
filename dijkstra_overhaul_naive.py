@@ -184,6 +184,12 @@ while prev_intersection != None:
     chosen_vertices_idxs.append(prev_intersection.index)
     prev_intersection = prev_intersection.prev
 
+print('Path: { ', end='')
+for i in range(len(chosen_vertices_idxs) - 1, -1, -1):
+    print(f'{chosen_vertices_idxs[i]}', end=' ')
+print('}')
+
+print(f'Number of intersections selected: {len(chosen_vertices_idxs)}.')
 
 print(f'The time it will take to travel this route is approximately {add_buffer_time(minutes)} minutes.')
 print(f'Time taken to run Dijkstra\'s Algorithm: {end_time - start_time} seconds\n')
