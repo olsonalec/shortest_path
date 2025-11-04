@@ -10,16 +10,17 @@ roads_gpd = gpd.read_file('data/Ramsey_Roads_Prepped.geojson')
 intersections_gpd = gpd.read_file('data/Ramsey_Intersections_Prepped.geojson')
 
 
-source = 2     # an intersection
-dest = 2000       # an intersection
+# source = 2     # an intersection
+# dest = 2000       # an intersection
 
 ##########################################################################
 # Updates November 2025
 
 class Vertex:
-    def __init__(self, index, neighbors):
+    def __init__(self, index, neighbors, coordinates):
         self.index = index
         self.neighbors = neighbors
+        self.coordinates = coordinates
 
 class Node:
     def __init__(self):
@@ -34,14 +35,31 @@ class Node:
 def calculate_distance(start_x, start_y, end_x, end_y):
     return ((((start_x - end_x) **2) + (start_y - end_y) ** 2) ** 0.5)
 
+def convert_meters_to_miles(meters):
+    return meters / 1609.344
+
+def heuristic(start_x, start_y, end_x, end_y, max_speed):
+    distance = convert_meters_to_miles(calculate_distance(start_x, start_y, end_x, end_y))
+    return distance / max_speed
+    
+
 
 ##### NEED TO SET UP vertex AND graph PROPERLY BEFORE THIS FUNCTION WILL WORK
 # vertex is a Vertex object
-def expand_vertex(vertex, graph):
+def expand_vertex(vertex, graph, int_gdf):
     expanded_states = []
-    for i in range(len(vertex.neighbors)):
-        neighbor = vertex.neighbors[i]
-        expanded_states.append(Node(neighbor, graph[neighbor]))
+    # vertex.neighbors is a dictionary
+    neighbors = list(vertex.neighbors.keys())
+    for neighbor in neighbors:
+        expanded_states.append(Vertex(neighbor, graph[neighbor], [int_gdf.iloc[neighbor].POINT_X, int_gdf.iloc[neighbor].POINT_Y]))
+     
+    return expanded_states
+
+    # extract neighbor intersection indices from the neighbors attribute, which is a dictionary
+    vertex_neighbors = list(vertex.neighbors.keys())
+    for i in range(len(vertex_neighbors)):
+        neighbor = vertex_neighbors[i]
+        expanded_states.append(Vertex(neighbor, graph[neighbor], [int_gdf.iloc[neighbor].POINT_X, int_gdf.iloc[neighbor].POINT_Y]))
 
     return expanded_states
 
@@ -110,9 +128,9 @@ def swap(i, j, heap):
 def heapify(i, heap, lookup):
     parent_idx = parent(i)
 
-    # lookup[heap[x].position] is a Node that corresponds to a State
-    # lookup[heap[x].position].f is the f value for that Node
-    if (parent_idx >= 0) and (lookup[heap[i].position].f < lookup[heap[parent_idx].position].f):
+    # lookup[heap[x].index] is a Node that corresponds to a State
+    # lookup[heap[x].index].f is the f value for that Node
+    if (parent_idx >= 0) and (lookup[heap[i].index].f < lookup[heap[parent_idx].index].f):
         heap = swap(i, parent_idx, heap)
         heap = heapify(parent_idx, heap, lookup)
 
@@ -129,15 +147,15 @@ def min_heapify(i, heap, lookup):
     r = right_child(i)
     smallest = -1
 
-    # lookup[heap[x].position] is a Node that corresponds to a State
-    # lookup[heap[x].position].f is the f value for that Node
+    # lookup[heap[x].index] is a Node that corresponds to a State
+    # lookup[heap[x].index].f is the f value for that Node
 
-    if (l < len(heap)) and (lookup[heap[l].position].f < lookup[heap[i].position].f):
+    if (l < len(heap)) and (lookup[heap[l].index].f < lookup[heap[i].index].f):
         smallest = l
     else:
         smallest = i
 
-    if (r < len(heap)) and (lookup[heap[r].position].f < lookup[heap[smallest].position].f):
+    if (r < len(heap)) and (lookup[heap[r].index].f < lookup[heap[smallest].index].f):
         smallest = r
 
     if smallest != i:
@@ -172,25 +190,149 @@ def extract_min(heap, lookup):
 
 
 def a_star(maze, starting_intersection, goal_intersection):
-    pass
+    # This dictionary contains Node objects, each of which keeps track of a corresponding State object.
+    # The keys are strings representing room numbers; values are Node objects
+    # Node objects keep track of their State's cost, f value, whether or not A* has visited the State, and, if it has been visited, the previous State in the shortest path
+    node_dict = {}
+    
+    # initialize the maze by creating a Node object for each state (room) in the maze
+    for room in maze.keys():
+        node_dict[room] = Node()
+
+    # retrieve the room number of the starting state
+    start_position = starting_intersection.index
+
+    # retrieve the coordinates of the starting and goal intersections
+    start_x = starting_intersection.coordinates[0]
+    start_y = starting_intersection.coordinates[1]
+    goal_x = goal_intersection.coordinates[0]
+    goal_y = goal_intersection.coordinates[1]
+
+    # initialize the Node object associated with the starting state
+    node_dict[start_position].visited = True        # by default, the starting state has already been visited
+    node_dict[start_position].cost = 0              # by default, the starting state has cost 0
+    node_dict[start_position].f = calculate_distance(start_x, start_y, goal_x, goal_y)    # calculate the estimated cost from the starting state to the goal state
+    
+    # This minimum binary heap will contain states as they are generated. Initially, only the starting state is in the heap.
+    heap = [starting_intersection]                         # each element in the heap is a State object
+    
+    while len(heap) > 0:
+        # Choose the state with lowest estimated cost.
+        state, heap = extract_min(heap, node_dict)      # extract_min() chooses the state with lowest f cost [f(x) = g(x) + h(x)]
+
+        # Terminate A* if the algorithm has reached the goal state.
+        if state.index == goal_intersection.index:
+            return node_dict
+
+        # Generate the states that can be reached from the given state.
+        expanded_states = expand_vertex(state, maze, intersections_gpd)         # expanded_states is a list of State objects
+
+        # Each neighbor is a State object.
+        for neighbor in expanded_states:
+            # retrieve the room number of the neighbor
+            index = neighbor.index
+
+            # retrieve coordinates
+            neighbor_x = neighbor.coordinates[0]
+            neighbor_y = neighbor.coordinates[1]
+            
+            # get cost of traveling from the current node to this neighbor node
+            neighbor_cost = maze[state.index][index]
+
+            h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 60)           # the estimated cost to reach the goal state from the neighboring state
+            g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state. The cost to travel between two adjacent rooms (states) is always 1.
+                                                                            # node_dict[state.index].cost is the cost to reach the previous node. Therefore, the cost to reach the neighboring node is node_dict[state.index].cost + 1
+            f_neighbor = g_neighbor + h_neighbor
+
+            # Check to make sure that this state hasn't already been visited.
+            # If it hasn't been visited, then check to see if the new cost to reach the state is less than the current best-known cost to reach it.
+            if (node_dict[index].visited == False) and (node_dict[index].f > f_neighbor):
+                # update the true cost and f(x) to reach this node
+                # remember, State objects are immutable, so we must update the corresponding Node object, which is stored in the node_dict dictionary
+                node_dict[index].cost = g_neighbor
+                node_dict[index].f = f_neighbor
+
+                # add the neighboring state to the heap and update its prev attribute to keep track of the previous state in the path
+
+                heap = push(neighbor, heap, node_dict)
+                node_dict[index].prev = state.index       # state.index is the room number of the state that A* is currently expanding
+
+        # after expanding all the states of this node, mark the current state as visited
+        node_dict[state.index].visited = True
+
+    # if we reach this point, A* has failed to find a path from the starting state to the goal state
+    return None
 
 
 # each key is an index into the intersections GeoDataFrame
-# each value is a list of strings that are themselves indices into the intersections GeoDataFrame (i.e. intersections that are one road segment away from the key intersection)
+# each value is a dictionary in the form {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
+# IGNORE THIS COMMENT each value is a list of strings that are themselves indices into the intersections GeoDataFrame (i.e. intersections that are one road segment away from the key intersection)
 road_network = {}
 for intersection in intersections_gpd.itertuples():
     index = intersection.Index
     neighbors = convert_string_to_list(intersection.NeighboringIntersections)   # neighbors is now a list with one element, which is a dictionary
         # the dictionary is structured {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
     neighbors = neighbors[0]    # get the dictionary out of the list
-    neighbor_indices = list(neighbors.keys())
-    road_network[index] = neighbor_indices
+    road_network[index] = neighbors
+    # neighbor_indices = list(neighbors.keys())
+    # road_network[index] = neighbor_indices
 
-print(road_network)
+# print(road_network)
 
-print(intersections_gpd.head())
+# print(intersections_gpd.head())
+
+# initialize the start and stop intersections
+start_idx = 0
+end_idx = 8000
+
+# dictionary in the format {<intersection>: <cost_to_reach_that_intersection>}
+# start_intersections = convert_string_to_list(intersections_gpd.iloc[start_idx].NeighboringIntersections)[0]
+# end_intersections = convert_string_to_list(intersections_gpd.iloc[end_idx].NeighboringIntersections)[0]
+
+start_intersection = Vertex(start_idx, road_network[start_idx], [intersections_gpd.iloc[start_idx].POINT_X, intersections_gpd.iloc[start_idx].POINT_Y])
+destination_intersection = Vertex(end_idx, road_network[end_idx], [intersections_gpd.iloc[end_idx].POINT_X, intersections_gpd.iloc[end_idx].POINT_Y])
+
+start_time = time.time()
+
+nodes = a_star(road_network, start_intersection, destination_intersection)
+
+end_time = time.time()
+
+if nodes == None:
+    print('Failed to find a path from the starting state to the goal state.')
+else:
+    # using the prev attribute of each Node, construct the shortest path from the goal state to the beginning state, then reverse it to find the true path
+    path = []
+    path.append(destination_intersection.index)
+    prev = nodes[destination_intersection.index].prev
+
+    while prev != None:
+        path.append(prev)
+        prev = nodes[prev].prev
+
+    print('Path: { ', end='')
+    for i in range(len(path) - 1, -1, -1):
+        print(f'{path[i]}', end=' ')
+    print('}')
+
+print(f'Number of intersections selected: {len(path)}.')
+print(f'Time taken by A* to find the shortest path: {end_time - start_time} seconds.')
+
+
+fig, ax = plt.subplots()
+
+roads_gpd.plot(ax=ax)
+
+# Plot the intersections that were chosen to create the fastest route
+intersections_gpd.loc[path, 'geometry'].plot(ax=ax, color='r')
+
+# Plot all the intersections that were visited by the A* algorithm
+# intersections_gpd.loc[visited_vertices, 'geometry'].plot()
+
+plt.show()
+
+
 sys.exit()
-
 
 
 ##########################################################################

@@ -13,7 +13,7 @@ end_time = time.time()
 print(f'Time to read the geojson files: {end_time - start_time}')
 
 
-source = 2     # an intersection
+source = 0     # an intersection
 dest = 8000       # an intersection
 
 class Road:
