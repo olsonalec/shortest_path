@@ -7,8 +7,8 @@ import math
 
 
 start_time = time.time()
-roads_gpd = gpd.read_file('data/Ramsey_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('data/Ramsey_Intersections_Prepped.geojson')
+roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped3.geojson')
+intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped3.geojson')
 end_time = time.time()
 print(f'Time to read the geojson files: {end_time - start_time}')
 
@@ -132,6 +132,9 @@ def dijkstra_update(graph, dest, vertex_array):
     visited_vertices = []       # a list containing all the indices of all the vertices that have been visited so far
     visited_intersections = []  # a list containing all the Vertex objects that have been visited so far
 
+    # Keep track of how many intersections have been explored. This information will be used to evaluate the runtime of this algorithm.
+    intersections_visited = 1
+
     while dest not in visited_vertices:
         # extract the vertex with lowest cost from the heap
         min_vertex_idx = find_min(vertex_array)
@@ -153,10 +156,13 @@ def dijkstra_update(graph, dest, vertex_array):
         visited_intersections.append(vertex_array[min_vertex_idx])
 
         vertex_array[min_vertex_idx].visited = True
+        intersections_visited += 1
 
         # remove the current vertex from the heap
         # vertex_array.remove(min_vertex_idx)
     
+    print(f'Total number of intersections visited: {intersections_visited}.')
+
     return visited_intersections, visited_vertices
 
 

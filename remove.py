@@ -1,9 +1,9 @@
 import geopandas as gpd
 
-x = 1
+x = 0
 
 if x == 1:
-    roads = gpd.read_file('Ramsey_roads_prepped.geojson')
+    roads = gpd.read_file('data/Hennepin_Roads_Prepped2.geojson')
 
     print(roads.info())
 
@@ -19,9 +19,9 @@ if x == 1:
 
     print(roads.info())
 
-    roads.to_file('Ramsey_Roads_Prepped.geojson')
+    roads.to_file('data/Hennepin_Roads_Prepped3.geojson')
 else:
-    intersections = gpd.read_file('Ramsey_intersections_prepped.geojson')
+    intersections = gpd.read_file('data/Hennepin_Intersections_Prepped2.geojson')
 
     print(intersections.info())
 
@@ -31,4 +31,4 @@ else:
 
     print(intersections.info())
 
-    intersections.to_file('Ramsey_Intersections_Prepped.geojson')
+    intersections.to_file('data/Hennepin_Intersections_Prepped3.geojson')

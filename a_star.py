@@ -6,8 +6,8 @@ import math
 import sys
 
 
-roads_gpd = gpd.read_file('data/Ramsey_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('data/Ramsey_Intersections_Prepped.geojson')
+roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped3.geojson')
+intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped3.geojson')
 
 
 # source = 2     # an intersection
@@ -66,7 +66,7 @@ def expand_vertex(vertex, graph, int_gdf):
     # vertex.neighbors is a dictionary
     neighbors = list(vertex.neighbors.keys())
     for neighbor in neighbors:
-        expanded_states.append(Vertex(neighbor, graph[neighbor], [int_gdf.iloc[neighbor].POINT_X, int_gdf.iloc[neighbor].POINT_Y]))
+        expanded_states.append(Vertex(neighbor, graph[neighbor], [int_gdf.iloc[neighbor].geometry.x, int_gdf.iloc[neighbor].geometry.y]))
      
     return expanded_states
 
@@ -233,12 +233,16 @@ def a_star(maze, starting_intersection, goal_intersection):
     # This minimum binary heap will contain states as they are generated. Initially, only the starting state is in the heap.
     heap = [starting_intersection]                         # each element in the heap is a State object
     
+    # Keep track of how many intersections have been explored. This information will be used to evaluate the runtime of this algorithm.
+    intersections_visited = 1
+
     while len(heap) > 0:
         # Choose the state with lowest estimated cost.
         state, heap = extract_min(heap, node_dict)      # extract_min() chooses the state with lowest f cost [f(x) = g(x) + h(x)]
 
         # Terminate A* if the algorithm has reached the goal state.
         if state.index == goal_intersection.index:
+            print(f'Total number of intersections visited: {intersections_visited}.')
             return node_dict
 
         # Generate the states that can be reached from the given state.
@@ -276,6 +280,7 @@ def a_star(maze, starting_intersection, goal_intersection):
 
         # after expanding all the states of this node, mark the current state as visited
         node_dict[state.index].visited = True
+        intersections_visited += 1
 
     # if we reach this point, A* has failed to find a path from the starting state to the goal state
     return None
@@ -306,8 +311,8 @@ end_idx = 8000
 # start_intersections = convert_string_to_list(intersections_gpd.iloc[start_idx].NeighboringIntersections)[0]
 # end_intersections = convert_string_to_list(intersections_gpd.iloc[end_idx].NeighboringIntersections)[0]
 
-start_intersection = Vertex(start_idx, road_network[start_idx], [intersections_gpd.iloc[start_idx].POINT_X, intersections_gpd.iloc[start_idx].POINT_Y])
-destination_intersection = Vertex(end_idx, road_network[end_idx], [intersections_gpd.iloc[end_idx].POINT_X, intersections_gpd.iloc[end_idx].POINT_Y])
+start_intersection = Vertex(start_idx, road_network[start_idx], [intersections_gpd.iloc[start_idx].geometry.x, intersections_gpd.iloc[start_idx].geometry.y])
+destination_intersection = Vertex(end_idx, road_network[end_idx], [intersections_gpd.iloc[end_idx].geometry.x, intersections_gpd.iloc[end_idx].geometry.y])
 
 start_time = time.time()
 
