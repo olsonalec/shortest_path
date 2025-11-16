@@ -7,14 +7,13 @@ import math
 
 
 start_time = time.time()
-roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped3.geojson')
-intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped3.geojson')
+roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
+intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped.geojson')
 end_time = time.time()
 print(f'Time to read the geojson files: {end_time - start_time}')
 
-
 source = 0     # an intersection
-dest = 8000       # an intersection
+dest = 20000       # an intersection
 
 class Road:
     def __init__(self, index, cost):
@@ -28,12 +27,6 @@ class Vertex:
         self.index = index      # the index into the intersections_gpd where this vertex is stored
         self.visited = False    # a boolean representing if Dijkstra's algorithm has visited this node yet
         self.neighbors = [] # a list of pointers to Vertex objects that can be reached by this Vertex - i.e. intersections that are one road segment away
-
-# class Node:
-#     def __init__(self):
-#         self.visited = False
-#         self.prev = None
-#         self.cost = float("inf")
 
     
 '''
@@ -79,15 +72,11 @@ Converts seconds into minutes and seconds.
 Parameter:
     seconds (float) - the value of seconds
 
-Return Values:
+Return Value:
     min (int) - an integer representing the number of minutes
-    sec (int) - an integer representing the number of seconds
 '''
 def convert_sec_to_min(seconds):
     return math.ceil(seconds / 60)
-    # min = int(seconds // 60)
-    # sec = int(seconds % 60)
-    # return min, sec
 
 def add_buffer_time(minutes):
     return math.ceil(minutes * 1.1)
@@ -104,7 +93,6 @@ length = intersections_gpd.shape[0]
 for i in range(length):
     neighboring_intersections = convert_string_to_list(intersections_gpd.loc[i]['NeighboringIntersections'])
     graph[i] = neighboring_intersections
-# print(graph)
 
 # Create a array. Each element is a Vertex object.
 # Each node also has pointers to its neighboring nodes.
@@ -139,9 +127,6 @@ def dijkstra_update(graph, dest, vertex_array):
         # extract the vertex with lowest cost from the heap
         min_vertex_idx = find_min(vertex_array)
 
-        # add the vertex's index to the list of visited vertices
-        # visited_vertices.append(min_vertex_idx)
-
         # update distances to the neighboring vertices
         for neighbor in vertex_array[min_vertex_idx].neighbors:       # each neighbor is a Vertex object
             if neighbor.visited == False:
@@ -157,19 +142,16 @@ def dijkstra_update(graph, dest, vertex_array):
 
         vertex_array[min_vertex_idx].visited = True
         intersections_visited += 1
-
-        # remove the current vertex from the heap
-        # vertex_array.remove(min_vertex_idx)
     
     print(f'Total number of intersections visited: {intersections_visited}.')
 
     return visited_intersections, visited_vertices
 
 
-
 start_time = time.time()
 visited_intersections, visited_vertices = dijkstra_update(graph, dest, my_array)
 end_time = time.time()
+
 
 # Find the shortest path
 chosen_vertices = []        # a list of Vertex objects that compose the shortest path
@@ -199,7 +181,6 @@ print(f'Number of intersections selected: {len(chosen_vertices_idxs)}.')
 
 print(f'The time it will take to travel this route is approximately {add_buffer_time(minutes)} minutes.')
 print(f'Time taken to run Dijkstra\'s Algorithm: {end_time - start_time} seconds\n')
-# print(f'Time spent finding minimum value in list: {total_search_time}')
 
 fig, ax = plt.subplots()
 
@@ -207,9 +188,6 @@ roads_gpd.plot(ax=ax)
 
 # Plot the intersections that were chosen to create the fastest route
 intersections_gpd.loc[chosen_vertices_idxs, 'geometry'].plot(ax=ax, color='r')
-
-# Plot all the intersections that were visited by Dijkstra's algorithm
-# intersections_gpd.loc[visited_vertices, 'geometry'].plot()
 
 print(f'Total number of intersections: {intersections_gpd.shape[0]}')
 print(f'Number of intersections visited by Dijkstra\'s algorithm: {len(visited_vertices)}\n')

@@ -6,12 +6,9 @@ import math
 import sys
 
 
-roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped3.geojson')
-intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped3.geojson')
+roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
+intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped.geojson')
 
-
-# source = 2     # an intersection
-# dest = 2000       # an intersection
 
 ##########################################################################
 # Updates November 2025
@@ -299,25 +296,15 @@ for intersection in intersections_gpd.itertuples():
     # neighbor_indices = list(neighbors.keys())
     # road_network[index] = neighbor_indices
 
-# print(road_network)
-
-# print(intersections_gpd.head())
 
 # initialize the start and stop intersections
 start_idx = 0
-end_idx = 8000
-
-# dictionary in the format {<intersection>: <cost_to_reach_that_intersection>}
-# start_intersections = convert_string_to_list(intersections_gpd.iloc[start_idx].NeighboringIntersections)[0]
-# end_intersections = convert_string_to_list(intersections_gpd.iloc[end_idx].NeighboringIntersections)[0]
-
+end_idx = 20000
 start_intersection = Vertex(start_idx, road_network[start_idx], [intersections_gpd.iloc[start_idx].geometry.x, intersections_gpd.iloc[start_idx].geometry.y])
 destination_intersection = Vertex(end_idx, road_network[end_idx], [intersections_gpd.iloc[end_idx].geometry.x, intersections_gpd.iloc[end_idx].geometry.y])
 
 start_time = time.time()
-
 nodes = a_star(road_network, start_intersection, destination_intersection)
-
 end_time = time.time()
 
 if nodes == None:
