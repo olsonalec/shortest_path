@@ -6,8 +6,8 @@ import math
 import sys
 
 
-roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped.geojson')
+roads_gpd = gpd.read_file('data/Plymouth_Roads_Prepped.geojson')
+intersections_gpd = gpd.read_file('data/Plymouth_Intersections_Prepped.geojson')
 
 
 ##########################################################################
@@ -20,11 +20,13 @@ class Vertex:
         self.coordinates = coordinates
 
 class Node:
-    def __init__(self):
+    def __init__(self, neighbors, coordinates):
         self.visited = False
         self.cost = float("inf")
         self.f = float("inf")
         self.prev = None
+        self.neighbors = neighbors      # {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
+        self.coordinates = coordinates  # [<x_coordinate>, <y_coordinate>]
 
 # Each coordinate is in UTM, so we can calculate Euclidean distance directly without having to convert to a different coordiante system.
 # (Ex. if the coordinates were in degrees, we'd have to convert them first.)
@@ -58,12 +60,12 @@ def add_buffer_time(minutes):
 
 ##### NEED TO SET UP vertex AND graph PROPERLY BEFORE THIS FUNCTION WILL WORK
 # vertex is a Vertex object
-def expand_vertex(vertex, graph, int_gdf):
+def expand_vertex(vertex, graph):
     expanded_states = []
     # vertex.neighbors is a dictionary
     neighbors = list(vertex.neighbors.keys())
     for neighbor in neighbors:
-        expanded_states.append(Vertex(neighbor, graph[neighbor], [int_gdf.iloc[neighbor].geometry.x, int_gdf.iloc[neighbor].geometry.y]))
+        expanded_states.append(Vertex(neighbor, graph[neighbor].neighbors, graph[neighbor].coordinates))
      
     return expanded_states
 
@@ -203,16 +205,15 @@ def extract_min(heap, lookup):
     return min, heap
 
 
-def a_star(maze, starting_intersection, goal_intersection):
+def a_star(node_dict, starting_intersection, goal_intersection):
     # This dictionary contains Node objects, each of which keeps track of a corresponding State object.
     # The keys are strings representing room numbers; values are Node objects
     # Node objects keep track of their State's cost, f value, whether or not A* has visited the State, and, if it has been visited, the previous State in the shortest path
-    node_dict = {}
+    # node_dict = {}
     
     # initialize the maze by creating a Node object for each state (room) in the maze
-    for room in maze.keys():
-        node_dict[room] = Node()
-
+    # for room in maze.keys():
+        # node_dict[room] = Node()
     # retrieve the room number of the starting state
     start_position = starting_intersection.index
 
@@ -243,7 +244,7 @@ def a_star(maze, starting_intersection, goal_intersection):
             return node_dict
 
         # Generate the states that can be reached from the given state.
-        expanded_states = expand_vertex(state, maze, intersections_gpd)         # expanded_states is a list of State objects
+        expanded_states = expand_vertex(state, node_dict)         # expanded_states is a list of State objects
 
         # Each neighbor is a State object.
         for neighbor in expanded_states:
@@ -255,7 +256,7 @@ def a_star(maze, starting_intersection, goal_intersection):
             neighbor_y = neighbor.coordinates[1]
             
             # get cost of traveling from the current node to this neighbor node
-            neighbor_cost = maze[state.index][index]
+            neighbor_cost = node_dict[state.index].neighbors[index]
 
             h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 60)           # the estimated cost to reach the goal state from the neighboring state
             g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state. The cost to travel between two adjacent rooms (states) is always 1.
@@ -284,7 +285,8 @@ def a_star(maze, starting_intersection, goal_intersection):
 
 
 # each key is an index into the intersections GeoDataFrame
-# each value is a dictionary in the form {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
+# each value is a Node object
+# IGNORE THIS COMMENT each value is a dictionary in the form {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
 # IGNORE THIS COMMENT each value is a list of strings that are themselves indices into the intersections GeoDataFrame (i.e. intersections that are one road segment away from the key intersection)
 road_network = {}
 for intersection in intersections_gpd.itertuples():
@@ -292,16 +294,17 @@ for intersection in intersections_gpd.itertuples():
     neighbors = convert_string_to_list(intersection.NeighboringIntersections)   # neighbors is now a list with one element, which is a dictionary
         # the dictionary is structured {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
     neighbors = neighbors[0]    # get the dictionary out of the list
-    road_network[index] = neighbors
+    # road_network[index] = neighbors
     # neighbor_indices = list(neighbors.keys())
     # road_network[index] = neighbor_indices
-
+    road_network[index] = Node(neighbors, [intersections_gpd.iloc[index].geometry.x, intersections_gpd.iloc[index].geometry.y])
+print(road_network)
 
 # initialize the start and stop intersections
 start_idx = 0
-end_idx = 20000
-start_intersection = Vertex(start_idx, road_network[start_idx], [intersections_gpd.iloc[start_idx].geometry.x, intersections_gpd.iloc[start_idx].geometry.y])
-destination_intersection = Vertex(end_idx, road_network[end_idx], [intersections_gpd.iloc[end_idx].geometry.x, intersections_gpd.iloc[end_idx].geometry.y])
+end_idx = 1000
+start_intersection = Vertex(start_idx, road_network[start_idx].neighbors, [intersections_gpd.iloc[start_idx].geometry.x, intersections_gpd.iloc[start_idx].geometry.y])
+destination_intersection = Vertex(end_idx, road_network[end_idx].neighbors, [intersections_gpd.iloc[end_idx].geometry.x, intersections_gpd.iloc[end_idx].geometry.y])
 
 start_time = time.time()
 nodes = a_star(road_network, start_intersection, destination_intersection)
