@@ -258,7 +258,7 @@ def a_star(node_dict, starting_intersection, goal_intersection):
             # get cost of traveling from the current node to this neighbor node
             neighbor_cost = node_dict[state.index].neighbors[index]
 
-            h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 60)           # the estimated cost to reach the goal state from the neighboring state
+            h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 70)           # the estimated cost to reach the goal state from the neighboring state
             g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state. The cost to travel between two adjacent rooms (states) is always 1.
                                                                             # node_dict[state.index].cost is the cost to reach the previous node. Therefore, the cost to reach the neighboring node is node_dict[state.index].cost + 1
             f_neighbor = g_neighbor + h_neighbor
