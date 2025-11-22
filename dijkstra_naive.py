@@ -6,14 +6,12 @@ import time
 import math
 
 
-start_time = time.time()
+print('Loading data...')
 roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
 intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped.geojson')
-end_time = time.time()
-print(f'Time to read the geojson files: {end_time - start_time}')
 
 source = 0     # an intersection
-dest = 20000       # an intersection
+dest = 1000       # an intersection
 
 class Road:
     def __init__(self, index, cost):
@@ -88,6 +86,7 @@ def add_buffer_time(minutes):
 #                                index: {neighboring_index: cost_to_reach}, etc.}
 # Each index is an index into the intersections GeoDataframe
 # The indices in the graph are intersections, and the weights are the costs to reach neighboring intersections.
+print('Constructing road network...')
 graph = {}
 length = intersections_gpd.shape[0]
 for i in range(length):
@@ -129,6 +128,7 @@ def dijkstra_update(graph, dest, vertex_array):
 
         # update distances to the neighboring vertices
         for neighbor in vertex_array[min_vertex_idx].neighbors:       # each neighbor is a Vertex object
+            intersections_visited += 1
             if neighbor.visited == False:
                 # new_cost = current cost + cost to reach the neighboring Vertex
                 new_cost = vertex_array[min_vertex_idx].cost + graph[min_vertex_idx][0][neighbor.index]
@@ -147,7 +147,7 @@ def dijkstra_update(graph, dest, vertex_array):
 
     return visited_intersections, visited_vertices
 
-
+print('Running Dijkstra...')
 start_time = time.time()
 visited_intersections, visited_vertices = dijkstra_update(graph, dest, my_array)
 end_time = time.time()
@@ -177,8 +177,6 @@ for i in range(len(chosen_vertices_idxs) - 1, -1, -1):
     print(f'{chosen_vertices_idxs[i]}', end=' ')
 print('}')
 
-print(f'Number of intersections selected: {len(chosen_vertices_idxs)}.')
-
 print(f'The time it will take to travel this route is approximately {add_buffer_time(minutes)} minutes.')
 print(f'Time taken to run Dijkstra\'s Algorithm: {end_time - start_time} seconds\n')
 
@@ -188,8 +186,5 @@ roads_gpd.plot(ax=ax)
 
 # Plot the intersections that were chosen to create the fastest route
 intersections_gpd.loc[chosen_vertices_idxs, 'geometry'].plot(ax=ax, color='r')
-
-print(f'Total number of intersections: {intersections_gpd.shape[0]}')
-print(f'Number of intersections visited by Dijkstra\'s algorithm: {len(visited_vertices)}\n')
 
 plt.show()

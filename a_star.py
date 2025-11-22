@@ -6,8 +6,12 @@ import math
 import sys
 
 
-roads_gpd = gpd.read_file('data/Plymouth_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('data/Plymouth_Intersections_Prepped.geojson')
+start_idx = 0
+end_idx = 1000
+
+print('Loading data...')
+roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
+intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped.geojson')
 
 
 ##########################################################################
@@ -248,6 +252,7 @@ def a_star(node_dict, starting_intersection, goal_intersection):
 
         # Each neighbor is a State object.
         for neighbor in expanded_states:
+            intersections_visited += 1
             # retrieve the room number of the neighbor
             index = neighbor.index
 
@@ -279,7 +284,6 @@ def a_star(node_dict, starting_intersection, goal_intersection):
         # after expanding all the states of this node, mark the current state as visited
         node_dict[state.index].visited = True
         intersections_visited += 1
-
     # if we reach this point, A* has failed to find a path from the starting state to the goal state
     return None
 
@@ -288,6 +292,7 @@ def a_star(node_dict, starting_intersection, goal_intersection):
 # each value is a Node object
 # IGNORE THIS COMMENT each value is a dictionary in the form {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
 # IGNORE THIS COMMENT each value is a list of strings that are themselves indices into the intersections GeoDataFrame (i.e. intersections that are one road segment away from the key intersection)
+print('Constructing road network...')
 road_network = {}
 for intersection in intersections_gpd.itertuples():
     index = intersection.Index
@@ -298,14 +303,12 @@ for intersection in intersections_gpd.itertuples():
     # neighbor_indices = list(neighbors.keys())
     # road_network[index] = neighbor_indices
     road_network[index] = Node(neighbors, [intersections_gpd.iloc[index].geometry.x, intersections_gpd.iloc[index].geometry.y])
-print(road_network)
 
 # initialize the start and stop intersections
-start_idx = 0
-end_idx = 1000
 start_intersection = Vertex(start_idx, road_network[start_idx].neighbors, [intersections_gpd.iloc[start_idx].geometry.x, intersections_gpd.iloc[start_idx].geometry.y])
 destination_intersection = Vertex(end_idx, road_network[end_idx].neighbors, [intersections_gpd.iloc[end_idx].geometry.x, intersections_gpd.iloc[end_idx].geometry.y])
 
+print('Running A*...')
 start_time = time.time()
 nodes = a_star(road_network, start_intersection, destination_intersection)
 end_time = time.time()
