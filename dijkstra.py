@@ -5,8 +5,8 @@ import time
 import math
 
 
-start_idx = 0
-end_idx = 20000
+start_idx = 20000
+end_idx = 0
 
 print('Loading data...')
 roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
@@ -26,7 +26,6 @@ class Node:
     def __init__(self, neighbors, coordinates):
         self.visited = False
         self.cost = float("inf")
-        self.f = float("inf")
         self.prev = None
         self.neighbors = neighbors      # {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
         self.coordinates = coordinates  # [<x_coordinate>, <y_coordinate>]
@@ -148,8 +147,8 @@ def heapify(i, heap, lookup):
     parent_idx = parent(i)
 
     # lookup[heap[x].index] is a Node that corresponds to a State
-    # lookup[heap[x].index].f is the f value for that Node
-    if (parent_idx >= 0) and (lookup[heap[i].index].f < lookup[heap[parent_idx].index].f):
+    # lookup[heap[x].index].cost is the f value for that Node
+    if (parent_idx >= 0) and (lookup[heap[i].index].cost < lookup[heap[parent_idx].index].cost):
         heap = swap(i, parent_idx, heap)
         heap = heapify(parent_idx, heap, lookup)
 
@@ -167,14 +166,14 @@ def min_heapify(i, heap, lookup):
     smallest = -1
 
     # lookup[heap[x].index] is a Node that corresponds to a State
-    # lookup[heap[x].index].f is the f value for that Node
+    # lookup[heap[x].index].cost is the f value for that Node
 
-    if (l < len(heap)) and (lookup[heap[l].index].f < lookup[heap[i].index].f):
+    if (l < len(heap)) and (lookup[heap[l].index].cost < lookup[heap[i].index].cost):
         smallest = l
     else:
         smallest = i
 
-    if (r < len(heap)) and (lookup[heap[r].index].f < lookup[heap[smallest].index].f):
+    if (r < len(heap)) and (lookup[heap[r].index].cost < lookup[heap[smallest].index].cost):
         smallest = r
 
     if smallest != i:
@@ -229,7 +228,6 @@ def a_star(node_dict, starting_intersection, goal_intersection):
     # initialize the Node object associated with the starting state
     node_dict[start_position].visited = True        # by default, the starting state has already been visited
     node_dict[start_position].cost = 0              # by default, the starting state has cost 0
-    node_dict[start_position].f = calculate_distance(start_x, start_y, goal_x, goal_y)    # calculate the estimated cost from the starting state to the goal state
     
     # This minimum binary heap will contain states as they are generated. Initially, only the starting state is in the heap.
     heap = [starting_intersection]                         # each element in the heap is a State object
@@ -256,28 +254,27 @@ def a_star(node_dict, starting_intersection, goal_intersection):
             index = neighbor.index
 
             # retrieve coordinates
-            neighbor_x = neighbor.coordinates[0]
-            neighbor_y = neighbor.coordinates[1]
+            # neighbor_x = neighbor.coordinates[0]
+            # neighbor_y = neighbor.coordinates[1]
             
             # get cost of traveling from the current node to this neighbor node
             neighbor_cost = node_dict[state.index].neighbors[index]
 
-            h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 70)           # the estimated cost to reach the goal state from the neighboring state
-            g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state. The cost to travel between two adjacent rooms (states) is always 1.
-                                                                            # node_dict[state.index].cost is the cost to reach the previous node. Therefore, the cost to reach the neighboring node is node_dict[state.index].cost + 1
-            f_neighbor = g_neighbor + h_neighbor
+            # h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 70)           # the estimated cost to reach the goal state from the neighboring state
+            g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state. 
+            #                                                                 # node_dict[state.index].cost is the cost to reach the previous node. Therefore, the cost to reach the neighboring node is node_dict[state.index].cost +
+            # f_neighbor = g_neighbor + h_neighbor
 
             # Check to make sure that this state hasn't already been visited.
             # If it hasn't been visited, then check to see if the new cost to reach the state is less than the current best-known cost to reach it.
-            if (node_dict[index].visited == False) and (node_dict[index].f > f_neighbor):
+            if (node_dict[index].visited == False) and (node_dict[index].cost > g_neighbor):
                 # update the true cost and f(x) to reach this node
                 # remember, State objects are immutable, so we must update the corresponding Node object, which is stored in the node_dict dictionary
                 node_dict[index].cost = g_neighbor
-                node_dict[index].f = f_neighbor
 
                 # add the neighboring state to the heap and update its prev attribute to keep track of the previous state in the path
                 heap = push(neighbor, heap, node_dict)
-                node_dict[index].prev = state.index       # state.index is the room number of the state that A* is currently expanding
+                node_dict[index].prev = state.index       # state.index is the room number of the state that Dijkstra is currently expanding
 
         # after expanding all the states of this node, mark the current state as visited
         node_dict[state.index].visited = True
