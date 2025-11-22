@@ -34,8 +34,8 @@ def calculate_time(speed, distance):
 
 if __name__ == '__main__':
 
-    roads = gpd.read_file('data/Hennepin_Roads.geojson')
-    intersections = gpd.read_file('data/Hennepin_Intersections.geojson')
+    roads = gpd.read_file('../data/Hennepin_Roads.geojson')
+    intersections = gpd.read_file('../data/Hennepin_Intersections.geojson')
 
     roads_speedlimit = []
 
@@ -75,5 +75,5 @@ if __name__ == '__main__':
     end_time = time.time()
     print(f'Total time: {end_time - start_time}')
 
-    intersections.to_file("data/Hennepin_Intersections_Prepped2.geojson")
-    roads.to_file("data/Hennepin_Roads_Prepped2.geojson")
+    intersections.to_file('../data/Hennepin_Intersections_Prepped2.geojson')
+    roads.to_file('../data/Hennepin_Roads_Prepped2.geojson')

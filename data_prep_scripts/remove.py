@@ -3,7 +3,7 @@ import geopandas as gpd
 x = 0
 
 if x == 1:
-    roads = gpd.read_file('data/Hennepin_Roads_Prepped2.geojson')
+    roads = gpd.read_file('../data/Hennepin_Roads_Prepped.geojson')
 
     print(roads.info())
 
@@ -21,7 +21,7 @@ if x == 1:
 
     roads.to_file('data/Hennepin_Roads_Prepped3.geojson')
 else:
-    intersections = gpd.read_file('data/Hennepin_Intersections_Prepped2.geojson')
+    intersections = gpd.read_file('../data/Hennepin_Intersections_Prepped.geojson')
 
     print(intersections.info())
 
