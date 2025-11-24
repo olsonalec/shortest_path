@@ -6,7 +6,7 @@ import math
 
 
 start_idx = 0
-end_idx = 20000
+end_idx = 2000
 
 print('Loading data...')
 roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
@@ -72,13 +72,6 @@ def expand_vertex(vertex, graph):
      
     return expanded_states
 
-    # extract neighbor intersection indices from the neighbors attribute, which is a dictionary
-    vertex_neighbors = list(vertex.neighbors.keys())
-    for i in range(len(vertex_neighbors)):
-        neighbor = vertex_neighbors[i]
-        expanded_states.append(Vertex(neighbor, graph[neighbor], [int_gdf.iloc[neighbor].POINT_X, int_gdf.iloc[neighbor].POINT_Y]))
-
-    return expanded_states
 
 '''
 The 'Intersections' and 'Roads' attributes in the Roads and Intersections Geodataframes, respectively, are represented as a nested list.
@@ -212,12 +205,8 @@ def a_star(node_dict, starting_intersection, goal_intersection):
     # This dictionary contains Node objects, each of which keeps track of a corresponding State object.
     # The keys are strings representing room numbers; values are Node objects
     # Node objects keep track of their State's cost, f value, whether or not A* has visited the State, and, if it has been visited, the previous State in the shortest path
-    # node_dict = {}
-    
-    # initialize the maze by creating a Node object for each state (room) in the maze
-    # for room in maze.keys():
-        # node_dict[room] = Node()
-    # retrieve the room number of the starting state
+
+    # retrieve the index of the starting state
     start_position = starting_intersection.index
 
     # retrieve the coordinates of the starting and goal intersections
@@ -263,8 +252,8 @@ def a_star(node_dict, starting_intersection, goal_intersection):
             neighbor_cost = node_dict[state.index].neighbors[index]
 
             h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 70)           # the estimated cost to reach the goal state from the neighboring state
-            g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state. The cost to travel between two adjacent rooms (states) is always 1.
-                                                                            # node_dict[state.index].cost is the cost to reach the previous node. Therefore, the cost to reach the neighboring node is node_dict[state.index].cost + 1
+            g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state.
+                                                                            # node_dict[state.index].cost is the cost to reach the previous node.
             f_neighbor = g_neighbor + h_neighbor
 
             # Check to make sure that this state hasn't already been visited.

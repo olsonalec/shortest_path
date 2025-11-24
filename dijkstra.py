@@ -5,8 +5,8 @@ import time
 import math
 
 
-start_idx = 20000
-end_idx = 0
+start_idx = 0
+end_idx = 2000
 
 print('Loading data...')
 roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
@@ -29,19 +29,6 @@ class Node:
         self.prev = None
         self.neighbors = neighbors      # {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
         self.coordinates = coordinates  # [<x_coordinate>, <y_coordinate>]
-
-# Each coordinate is in UTM, so we can calculate Euclidean distance directly without having to convert to a different coordiante system.
-# (Ex. if the coordinates were in degrees, we'd have to convert them first.)
-# This is the heuristic function for A*
-def calculate_distance(start_x, start_y, end_x, end_y):
-    return ((((start_x - end_x) **2) + (start_y - end_y) ** 2) ** 0.5)
-
-def convert_meters_to_miles(meters):
-    return meters / 1609.344
-
-def heuristic(start_x, start_y, end_x, end_y, max_speed):
-    distance = convert_meters_to_miles(calculate_distance(start_x, start_y, end_x, end_y))
-    return distance / max_speed
 
 '''
 Converts seconds into minutes and seconds.
@@ -71,13 +58,6 @@ def expand_vertex(vertex, graph):
      
     return expanded_states
 
-    # extract neighbor intersection indices from the neighbors attribute, which is a dictionary
-    vertex_neighbors = list(vertex.neighbors.keys())
-    for i in range(len(vertex_neighbors)):
-        neighbor = vertex_neighbors[i]
-        expanded_states.append(Vertex(neighbor, graph[neighbor], [int_gdf.iloc[neighbor].POINT_X, int_gdf.iloc[neighbor].POINT_Y]))
-
-    return expanded_states
 
 '''
 The 'Intersections' and 'Roads' attributes in the Roads and Intersections Geodataframes, respectively, are represented as a nested list.
@@ -210,20 +190,11 @@ def extract_min(heap, lookup):
 def a_star(node_dict, starting_intersection, goal_intersection):
     # This dictionary contains Node objects, each of which keeps track of a corresponding State object.
     # The keys are strings representing room numbers; values are Node objects
-    # Node objects keep track of their State's cost, f value, whether or not A* has visited the State, and, if it has been visited, the previous State in the shortest path
-    # node_dict = {}
+    # Node objects keep track of their State's cost, f value, whether or not Dijkstra has visited the State, and, if it has been visited, the previous State in the shortest path
     
-    # initialize the maze by creating a Node object for each state (room) in the maze
-    # for room in maze.keys():
-        # node_dict[room] = Node()
-    # retrieve the room number of the starting state
+    # retrieve the index of the starting state
     start_position = starting_intersection.index
 
-    # retrieve the coordinates of the starting and goal intersections
-    start_x = starting_intersection.coordinates[0]
-    start_y = starting_intersection.coordinates[1]
-    goal_x = goal_intersection.coordinates[0]
-    goal_y = goal_intersection.coordinates[1]
 
     # initialize the Node object associated with the starting state
     node_dict[start_position].visited = True        # by default, the starting state has already been visited
@@ -239,7 +210,7 @@ def a_star(node_dict, starting_intersection, goal_intersection):
         # Choose the state with lowest estimated cost.
         state, heap = extract_min(heap, node_dict)      # extract_min() chooses the state with lowest f cost [f(x) = g(x) + h(x)]
 
-        # Terminate A* if the algorithm has reached the goal state.
+        # Terminate Dijkstra if the algorithm has reached the goal state.
         if state.index == goal_intersection.index:
             print(f'Total number of intersections visited: {intersections_visited}.')
             return node_dict
@@ -252,23 +223,15 @@ def a_star(node_dict, starting_intersection, goal_intersection):
             intersections_visited += 1
             # retrieve the room number of the neighbor
             index = neighbor.index
-
-            # retrieve coordinates
-            # neighbor_x = neighbor.coordinates[0]
-            # neighbor_y = neighbor.coordinates[1]
             
             # get cost of traveling from the current node to this neighbor node
             neighbor_cost = node_dict[state.index].neighbors[index]
 
-            # h_neighbor = heuristic(neighbor_x, neighbor_y, goal_x, goal_y, 70)           # the estimated cost to reach the goal state from the neighboring state
             g_neighbor = node_dict[state.index].cost + neighbor_cost                 # The cost to reach the neighboring state from the starting state. 
-            #                                                                 # node_dict[state.index].cost is the cost to reach the previous node. Therefore, the cost to reach the neighboring node is node_dict[state.index].cost +
-            # f_neighbor = g_neighbor + h_neighbor
 
             # Check to make sure that this state hasn't already been visited.
             # If it hasn't been visited, then check to see if the new cost to reach the state is less than the current best-known cost to reach it.
             if (node_dict[index].visited == False) and (node_dict[index].cost > g_neighbor):
-                # update the true cost and f(x) to reach this node
                 # remember, State objects are immutable, so we must update the corresponding Node object, which is stored in the node_dict dictionary
                 node_dict[index].cost = g_neighbor
 
@@ -279,7 +242,7 @@ def a_star(node_dict, starting_intersection, goal_intersection):
         # after expanding all the states of this node, mark the current state as visited
         node_dict[state.index].visited = True
         intersections_visited += 1
-    # if we reach this point, A* has failed to find a path from the starting state to the goal state
+    # if we reach this point, Dijkstra has failed to find a path from the starting state to the goal state
     return None
 
 
@@ -303,7 +266,7 @@ for intersection in intersections_gpd.itertuples():
 start_intersection = Vertex(start_idx, road_network[start_idx].neighbors, [intersections_gpd.iloc[start_idx].geometry.x, intersections_gpd.iloc[start_idx].geometry.y])
 destination_intersection = Vertex(end_idx, road_network[end_idx].neighbors, [intersections_gpd.iloc[end_idx].geometry.x, intersections_gpd.iloc[end_idx].geometry.y])
 
-print('Running A*...')
+print('Running Dijkstra...')
 start_time = time.time()
 nodes = a_star(road_network, start_intersection, destination_intersection)
 end_time = time.time()
@@ -330,7 +293,7 @@ else:
 
 print(f'Number of intersections selected: {len(path)}.')
 print(f'The time it will take to travel this route is approximately {add_buffer_time(total_travel_time)} minutes.')
-print(f'Time taken by A* to find the shortest path: {end_time - start_time} seconds.')
+print(f'Time taken by Dijkstra to find the shortest path: {end_time - start_time} seconds.')
 
 
 fig, ax = plt.subplots()
@@ -340,7 +303,7 @@ roads_gpd.plot(ax=ax)
 # Plot the intersections that were chosen to create the fastest route
 intersections_gpd.loc[path, 'geometry'].plot(ax=ax, color='r')
 
-# Plot all the intersections that were visited by the A* algorithm
+# Plot all the intersections that were visited by the Dijkstra algorithm
 # intersections_gpd.loc[visited_vertices, 'geometry'].plot()
 
 plt.show()
