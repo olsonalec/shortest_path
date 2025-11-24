@@ -1,4 +1,4 @@
-## README CURRENTLY OUT OF DATE AND IS CURRENTLY BEING UPDATED. IN THE MEANTIME, PLEASE REFER TO THE `report.pdf` DOCUMENT TO LEARN MORE ABOUT THIS PROJECT.
+## README CURRENTLY OUT OF DATE AND IS BEING UPDATED. IN THE MEANTIME, PLEASE REFER TO THE `report.pdf` DOCUMENT TO LEARN MORE ABOUT THIS PROJECT.
 
 `dijkstra_naive.py`
 - This script implements Dijkstra's Algorithm using a naive approach to store information about the vertices. It uses an unsorted list that does not grow or shrink. This means that, for every iteration of the algorithm where it searches for the vertex with the lowest cost, the algorithm has to conduct a linear search through the list, resulting in a runtime of O(n) for each iteration. Not only that, but the search also has to check if each node has already been visited. This is also a linear time problem. If the node has already been visited, it is skipped because Dijkstra's Algorithm only visits each node once.
