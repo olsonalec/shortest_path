@@ -2,7 +2,7 @@ import json
 import geojson
 
 
-with open('new_data/Hennepin_Roads.geojson', 'r') as fp:
+with open('new_data/Seven_Counties_Roads.geojson', 'r') as fp:
     contents = json.loads(fp.read())
 
     intersections = []
@@ -28,7 +28,7 @@ for i in range(len(intersections)):
     intersection_Points.append(geojson.Point(intersections[i]))
 
 # write the intersections to a geojson file
-name = 'Hennepin_Intersections'
+name = 'Seven_Counties_Intersections'
 with open(f'new_data/{name}.geojson', 'w') as fp:
     # header
     fp.write(
