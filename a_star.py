@@ -5,17 +5,6 @@ import time
 import math
 
 
-start_idx = 0
-end_idx = 2000
-
-print('Loading data...')
-roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
-intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped.geojson')
-
-
-##########################################################################
-# Updates November 2025
-
 class Vertex:
     def __init__(self, index, neighbors, coordinates):
         self.index = index
@@ -37,12 +26,14 @@ class Node:
 def calculate_distance(start_x, start_y, end_x, end_y):
     return ((((start_x - end_x) **2) + (start_y - end_y) ** 2) ** 0.5)
 
-def convert_meters_to_miles(meters):
-    return meters / 1609.344
+# converts a speed from miles per hour to meters per second
+def convert_mph_to_mps(mph):
+    return mph / 2.237
 
 def heuristic(start_x, start_y, end_x, end_y, max_speed):
-    distance = convert_meters_to_miles(calculate_distance(start_x, start_y, end_x, end_y))
-    return distance / max_speed
+    max_speed_mps = convert_mph_to_mps(max_speed)
+    distance = calculate_distance(start_x, start_y, end_x, end_y)
+    return distance / max_speed_mps
 
 '''
 Converts seconds into minutes and seconds.
@@ -279,60 +270,128 @@ def a_star(node_dict, starting_intersection, goal_intersection):
 # each value is a Node object
 # IGNORE THIS COMMENT each value is a dictionary in the form {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
 # IGNORE THIS COMMENT each value is a list of strings that are themselves indices into the intersections GeoDataFrame (i.e. intersections that are one road segment away from the key intersection)
-print('Constructing road network...')
-road_network = {}
-for intersection in intersections_gpd.itertuples():
-    index = intersection.Index
-    neighbors = convert_string_to_list(intersection.NeighboringIntersections)   # neighbors is now a list with one element, which is a dictionary
-        # the dictionary is structured {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
-    neighbors = neighbors[0]    # get the dictionary out of the list
-    # road_network[index] = neighbors
-    # neighbor_indices = list(neighbors.keys())
-    # road_network[index] = neighbor_indices
-    road_network[index] = Node(neighbors, [intersections_gpd.iloc[index].geometry.x, intersections_gpd.iloc[index].geometry.y])
+def construct_road_network(intersections_geodataframe):
+    print('Constructing road network...')
+    road_network = {}
+    for intersection in intersections_geodataframe.itertuples():
+        index = intersection.Index
+        neighbors = convert_string_to_list(intersection.NeighboringIntersections)   # neighbors is now a list with one element, which is a dictionary
+            # the dictionary is structured {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
+        neighbors = neighbors[0]    # get the dictionary out of the list
+        # road_network[index] = neighbors
+        # neighbor_indices = list(neighbors.keys())
+        # road_network[index] = neighbor_indices
+        road_network[index] = Node(neighbors, [intersections_geodataframe.iloc[index].geometry.x, intersections_geodataframe.iloc[index].geometry.y])
+    
+    return road_network
 
-# initialize the start and stop intersections
-start_intersection = Vertex(start_idx, road_network[start_idx].neighbors, [intersections_gpd.iloc[start_idx].geometry.x, intersections_gpd.iloc[start_idx].geometry.y])
-destination_intersection = Vertex(end_idx, road_network[end_idx].neighbors, [intersections_gpd.iloc[end_idx].geometry.x, intersections_gpd.iloc[end_idx].geometry.y])
+# get user input for where the route should start and stop
+def get_start_and_end_points(upperbound, lowerbound=0):
+    start_idx = ''
+    end_idx = ''
 
-print('Running A*...')
-start_time = time.time()
-nodes = a_star(road_network, start_intersection, destination_intersection)
-end_time = time.time()
+    while (not isinstance(start_idx, int)):
+        start_idx = input('Enter a starting index: ')
+        try:
+            start_idx = int(start_idx)
+            if (start_idx < lowerbound) or (start_idx > upperbound):
+                print('Invalid input for starting index')
+                start_idx = ''
+        except:
+            print('Invalid input for starting index')
 
-if nodes == None:
-    print('Failed to find a path from the starting state to the goal state.')
-else:
-    # using the prev attribute of each Node, construct the shortest path from the goal state to the beginning state, then reverse it to find the true path
-    path = []
-    path.append(destination_intersection.index)
-    prev = nodes[destination_intersection.index].prev
+    while (not isinstance(end_idx, int)):
+        end_idx = input('Enter a ending index: ')
+        try:
+            end_idx = int(end_idx)
+            if (end_idx < lowerbound) or (end_idx > upperbound):
+                print('Invalid input for ending index')
+                end_idx = ''
+        except:
+            print('Invalid input for ending index')
 
-    # find time to travel this path
-    total_travel_time = convert_sec_to_min(nodes[destination_intersection.index].cost)
+    return start_idx, end_idx
 
-    while prev != None:
-        path.append(prev)
-        prev = nodes[prev].prev
+def initialize_start_and_stop_intersections(road_network, intersections_geodataframe, start_idx, end_idx):
+    # initialize the start and stop intersections
+    start_intersection = Vertex(start_idx, road_network[start_idx].neighbors, [intersections_geodataframe.iloc[start_idx].geometry.x, intersections_geodataframe.iloc[start_idx].geometry.y])
+    destination_intersection = Vertex(end_idx, road_network[end_idx].neighbors, [intersections_geodataframe.iloc[end_idx].geometry.x, intersections_geodataframe.iloc[end_idx].geometry.y])
 
-    print('Path: { ', end='')
-    for i in range(len(path) - 1, -1, -1):
-        print(f'{path[i]}', end=' ')
-    print('}')
+    return start_intersection, destination_intersection
 
-print(f'Number of intersections selected: {len(path)}.')
-print(f'The time it will take to travel this route is approximately {add_buffer_time(total_travel_time)} minutes.')
-print(f'Time taken by A* to find the shortest path: {end_time - start_time} seconds.')
+def run_astar(roads, start_intersection, goal_intersection):
+    print('Running A*...')
+    start_time = time.time()
+    nodes = a_star(roads, start_intersection, goal_intersection)
+    end_time = time.time()
 
+    print(f'Time taken by A* to find the shortest path: {end_time - start_time} seconds.')
 
-fig, ax = plt.subplots()
+    return nodes
 
-roads_gpd.plot(ax=ax)
+def build_path(nodes, destination_intersection):
+    if nodes == None:
+        print('Failed to find a path from the starting state to the goal state.')
+        return None
+    else:
+        # using the prev attribute of each Node, construct the shortest path from the goal state to the beginning state, then reverse it to find the true path
+        path = []
+        path.append(destination_intersection.index)
+        prev = nodes[destination_intersection.index].prev
 
-# Plot the intersections that were chosen to create the fastest route
-intersections_gpd.loc[path, 'geometry'].plot(ax=ax, color='r')
+        # find time to travel this path
+        total_travel_time = convert_sec_to_min(nodes[destination_intersection.index].cost)
 
-# Plot all the intersections that were visited by the A* algorithm
-# intersections_gpd.loc[visited_vertices, 'geometry'].plot()
+        while prev != None:
+            path.append(prev)
+            prev = nodes[prev].prev
 
-plt.show()
+        print('Path: { ', end='')
+        for i in range(len(path) - 1, -1, -1):
+            print(f'{path[i]}', end=' ')
+        print('}')
+
+        print(f'Number of intersections selected: {len(path)}.')
+        print(f'The time it will take to travel this route is approximately {add_buffer_time(total_travel_time)} minutes.')
+
+        return path
+    
+def plot_path(path, intersections_geodataframe, roads_geodataframe):
+    if path is not None:
+
+        fig, ax = plt.subplots()
+
+        roads_geodataframe.plot(ax=ax)
+
+        # Plot the intersections that were chosen to create the fastest route
+        intersections_geodataframe.loc[path, 'geometry'].plot(ax=ax, color='r')
+
+        plt.show()
+
+if __name__ == '__main__':
+    print('Loading data...')
+    roads_gpd = gpd.read_file('data/Hennepin_Roads_Prepped.geojson')
+    intersections_gpd = gpd.read_file('data/Hennepin_Intersections_Prepped.geojson')
+
+    upperbound = intersections_gpd.shape[0] - 1     # the number of intersections in the dataset
+
+    roads = construct_road_network(intersections_gpd)
+
+    quit = False
+    while not quit:
+        start, goal = get_start_and_end_points(upperbound)
+        start_intersection, goal_intersection = initialize_start_and_stop_intersections(roads, intersections_gpd, start, goal)
+        nodes = run_astar(roads, start_intersection, goal_intersection)
+        path = build_path(nodes, goal_intersection)
+        plot_path(path, intersections_gpd, roads_gpd)
+
+        valid_input = False
+        keep_going = ''
+        while not valid_input:
+            if keep_going == 'n':
+                quit = True
+                valid_input = True
+            elif keep_going == 'y':
+                valid_input = True
+            else:
+                keep_going = input('Find another route? y/n: ')
