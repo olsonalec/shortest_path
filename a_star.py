@@ -22,7 +22,6 @@ class Node:
 
 # Each coordinate is in UTM, so we can calculate Euclidean distance directly without having to convert to a different coordiante system.
 # (Ex. if the coordinates were in degrees, we'd have to convert them first.)
-# This is the heuristic function for A*
 def calculate_distance(start_x, start_y, end_x, end_y):
     return ((((start_x - end_x) **2) + (start_y - end_y) ** 2) ** 0.5)
 
@@ -30,30 +29,35 @@ def calculate_distance(start_x, start_y, end_x, end_y):
 def convert_mph_to_mps(mph):
     return mph / 2.237
 
+# calculates the estimated cost (time) to reach the goal intersection from the current intersections
 def heuristic(start_x, start_y, end_x, end_y, max_speed):
-    max_speed_mps = convert_mph_to_mps(max_speed)
     distance = calculate_distance(start_x, start_y, end_x, end_y)
+    max_speed_mps = convert_mph_to_mps(max_speed)
     return distance / max_speed_mps
 
 '''
-Converts seconds into minutes and seconds.
-
-Parameter:
-    seconds (float) - the value of seconds
-
-Return Values:
-    min (int) - an integer representing the number of minutes
-    sec (int) - an integer representing the number of seconds
+Converts seconds into minutes, rounding up to the nearest minute.
 '''
 def convert_sec_to_min(seconds):
     return math.ceil(seconds / 60)
 
-def add_buffer_time(minutes):
-    return math.ceil(minutes * 1.1)
+'''
+Adds a buffer time to the estimated time to travel the route.
+This program doesn't take into account stoplights, stop signs, road conditions, traffic, etc.,
+    so this buffer time helps to account for these things that would slow down the travel time.
+'''
+def add_buffer_time(minutes, percentage):
+    return math.ceil(minutes * (1 + percentage))
 
 
-##### NEED TO SET UP vertex AND graph PROPERLY BEFORE THIS FUNCTION WILL WORK
-# vertex is a Vertex object
+'''
+Inputs:
+    vertex: a Vertex object
+    graph:
+
+Return Value:
+    expanded_states: a list of Vertex objects
+'''
 def expand_vertex(vertex, graph):
     expanded_states = []
     # vertex.neighbors is a dictionary
@@ -85,7 +89,7 @@ def convert_string_to_list(bad_string):
 
 # The following functions implement standard heap operations.
 
-########## ELEMENTS IN THE HEAP SHOULD BE Vertex OBJECTS, NOT Node OBJECTS ##########
+# Each element in the heap is a Vertex object.
 
 # get the index of the parent node given a starting index i
 def parent(i):
@@ -101,9 +105,9 @@ def right_child(i):
 
 # push an item onto the heap
 # runs in O(log2(n)) time because Python's append() operator runs in O(1) amortized time and heapify() runs in O(log2(n)) time
-#   item is a State object
+#   item is a Vertex object
 #   heap is the minimum binary heap, represented as a list
-#   lookup is a dictionary that is used to map State objects to their costs
+#   lookup is a dictionary that is used to map Vertex objects to their costs
 #       the keys are strings representing room numbers, and the values are Node objects
 def push(item, heap, lookup):
     heap.append(item)
@@ -126,7 +130,7 @@ def swap(i, j, heap):
 # runs in O(log2(n)) time because the heap is a binary tree
 #   i is an index
 #   heap is the minimum binary heap, implemented as a list
-#   lookup is a dictionary that is used to map State objects to their costs
+#   lookup is a dictionary that is used to map Vertex objects to their costs
 #       the keys are strings representing room numbers, and the values are Node objects
 def heapify(i, heap, lookup):
     parent_idx = parent(i)
@@ -143,7 +147,7 @@ def heapify(i, heap, lookup):
 # runs in O(log2(n)) time because the heap is a binary tree
 #   i is an index
 #   heap is the minimum binary heap, implemented as a list
-#   lookup is a dictionary that is used to map State objects to their costs
+#   lookup is a dictionary that is used to map Vertex objects to their costs
 #       the keys are strings representing room numbers, and the values are Node objects
 def min_heapify(i, heap, lookup):
     l = left_child(i)
@@ -170,7 +174,7 @@ def min_heapify(i, heap, lookup):
 # remove the minimum element from the heap (it will be at the front because this is a minimum binary heap)
 # runs in O(log2(n)) time because Python's pop() function runs in O(1) time when removing the last element of a list, and min_heapify() runs in O(log2(n)) time
 #   heap is the minimum binary heap, implemented as a list
-#   lookup is a dictionary that is used to map State objects to their costs
+#   lookup is a dictionary that is used to map Vertex objects to their costs
 #       the keys are strings representing room numbers, and the values are Node objects
 def extract_min(heap, lookup):
     if len(heap) == 0:
@@ -191,11 +195,16 @@ def extract_min(heap, lookup):
 
     return min, heap
 
-
+'''
+Inputs
+    node_dict:
+    starting_intersection: a Vertex object
+    goal_intersection: a Vertex object
+'''
 def a_star(node_dict, starting_intersection, goal_intersection):
-    # This dictionary contains Node objects, each of which keeps track of a corresponding State object.
+    # This dictionary contains Node objects, each of which keeps track of a corresponding Vertex object.
     # The keys are strings representing room numbers; values are Node objects
-    # Node objects keep track of their State's cost, f value, whether or not A* has visited the State, and, if it has been visited, the previous State in the shortest path
+    # Node objects keep track of their Vertex's cost, f value, whether or not A* has visited the State, and, if it has been visited, the previous Vertex in the shortest path
 
     # retrieve the index of the starting state
     start_position = starting_intersection.index
@@ -212,7 +221,7 @@ def a_star(node_dict, starting_intersection, goal_intersection):
     node_dict[start_position].f = calculate_distance(start_x, start_y, goal_x, goal_y)    # calculate the estimated cost from the starting state to the goal state
     
     # This minimum binary heap will contain states as they are generated. Initially, only the starting state is in the heap.
-    heap = [starting_intersection]                         # each element in the heap is a State object
+    heap = [starting_intersection]                         # each element in the heap is a Vertex object
     
     # Keep track of how many intersections have been explored. This information will be used to evaluate the runtime of this algorithm.
     intersections_visited = 1
@@ -227,9 +236,9 @@ def a_star(node_dict, starting_intersection, goal_intersection):
             return node_dict
 
         # Generate the states that can be reached from the given state.
-        expanded_states = expand_vertex(state, node_dict)         # expanded_states is a list of State objects
+        expanded_states = expand_vertex(state, node_dict)         # expanded_states is a list of Vertex objects
 
-        # Each neighbor is a State object.
+        # Each neighbor is a Vertex object.
         for neighbor in expanded_states:
             intersections_visited += 1
             # retrieve the room number of the neighbor
@@ -251,7 +260,7 @@ def a_star(node_dict, starting_intersection, goal_intersection):
             # If it hasn't been visited, then check to see if the new cost to reach the state is less than the current best-known cost to reach it.
             if (node_dict[index].visited == False) and (node_dict[index].f > f_neighbor):
                 # update the true cost and f(x) to reach this node
-                # remember, State objects are immutable, so we must update the corresponding Node object, which is stored in the node_dict dictionary
+                # remember, Vertex objects are immutable, so we must update the corresponding Node object, which is stored in the node_dict dictionary
                 node_dict[index].cost = g_neighbor
                 node_dict[index].f = f_neighbor
 
@@ -312,6 +321,17 @@ def get_start_and_end_points(upperbound, lowerbound=0):
 
     return start_idx, end_idx
 
+'''
+Inputs:
+    road_network:
+    intersections_geodataframe:
+    start_idx:
+    end_idx:
+
+Return Values:
+    start_intersection: a Vertex object
+    destination_intersection: a Vertex object
+'''
 def initialize_start_and_stop_intersections(road_network, intersections_geodataframe, start_idx, end_idx):
     # initialize the start and stop intersections
     start_intersection = Vertex(start_idx, road_network[start_idx].neighbors, [intersections_geodataframe.iloc[start_idx].geometry.x, intersections_geodataframe.iloc[start_idx].geometry.y])
@@ -319,6 +339,12 @@ def initialize_start_and_stop_intersections(road_network, intersections_geodataf
 
     return start_intersection, destination_intersection
 
+'''
+Inputs:
+    roads: 
+    start_intersection: a Vertex object
+    goal_intersection: a Vertex object
+'''
 def run_astar(roads, start_intersection, goal_intersection):
     print('Running A*...')
     start_time = time.time()
@@ -352,7 +378,8 @@ def build_path(nodes, destination_intersection):
         print('}')
 
         print(f'Number of intersections selected: {len(path)}.')
-        print(f'The time it will take to travel this route is approximately {add_buffer_time(total_travel_time)} minutes.')
+        buffer = 0.1        # add 10% to the total travel time
+        print(f'The time it will take to travel this route is approximately {add_buffer_time(total_travel_time, buffer)} minutes.')
 
         return path
     
