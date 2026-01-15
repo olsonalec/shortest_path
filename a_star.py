@@ -20,37 +20,90 @@ class Node:
         self.neighbors = neighbors      # {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
         self.coordinates = coordinates  # [<x_coordinate>, <y_coordinate>]
 
-# Each coordinate is in UTM, so we can calculate Euclidean distance directly without having to convert to a different coordiante system.
-# (Ex. if the coordinates were in degrees, we'd have to convert them first.)
+
+'''
+A function to calculate the Euclidean distance between two coordinates in UTM15.
+Because the coordinates are in UTM, we can calculate the Euclidean distance directly without having to first convert them to a different coordinate system.
+For example, if the coordinates were in degrees, we'd have to convert them first.
+
+Inputs:
+    start_x: a coordinate in UTM15
+    end_x: a coordinate in UTM15
+    start_y: a coordinate in UTM15
+    end_y: a coordinate in UTM15
+
+Return Value:
+    The Euclidean distance between (start_x, start_y) and (end_x, end_y)
+'''
 def calculate_distance(start_x, start_y, end_x, end_y):
     return ((((start_x - end_x) **2) + (start_y - end_y) ** 2) ** 0.5)
 
-# converts a speed from miles per hour to meters per second
+'''
+A function to convert miles per hour into meters per second.
+
+Input:
+    mph: A speed in miles per hour
+
+Return Value:
+    That same speed in meters per second
+'''
 def convert_mph_to_mps(mph):
     return mph / 2.237
 
-# calculates the estimated cost (time) to reach the goal intersection from the current intersections
+'''
+A function to calculate the heuristic associated with the A* algorithm.
+A heuristic function calculates the estimated cost (time) to reach the goal intersection from the current intersection.
+
+Inputs:
+    start_x: a coordinate in UTM15
+    end_x: a coordinate in UTM15
+    start_y: a coordinate in UTM15
+    end_y: a coordinate in UTM15
+    max_speed: a float or int representing the maximum speed limit on the roads in the dataset
+                The heuristic function needs to be admissible, i.e. it never overestimates the true cost of reaching the goal intersection.
+                Therefore, we need to use the maximum speed to estimate the total travel time because a car will never travel faster than the maximum speed.
+                Therefore, this heuristic will never overestimate the true cost.
+
+Return Value:
+    A float representing the estimated amount of time to travel from (start_x, start_y) to (end_x, end_y)
+'''
 def heuristic(start_x, start_y, end_x, end_y, max_speed):
     distance = calculate_distance(start_x, start_y, end_x, end_y)
     max_speed_mps = convert_mph_to_mps(max_speed)
     return distance / max_speed_mps
 
 '''
-Converts seconds into minutes, rounding up to the nearest minute.
+A function to convert seconds into minutes, rounding up to the nearest minute.
+
+Input:
+    seconds (float)
+
+Return Value:
+    Rounded up, the number of minutes equal to the inputted number of seconds
 '''
 def convert_sec_to_min(seconds):
     return math.ceil(seconds / 60)
 
 '''
-Adds a buffer time to the estimated time to travel the route.
+A function to add a buffer time to the estimated time to travel the route.
 This program doesn't take into account stoplights, stop signs, road conditions, traffic, etc.,
     so this buffer time helps to account for these things that would slow down the travel time.
+
+Inputs:
+    minutes: an integer representing the number of minutes estimated to traverse a given route
+    percentage: a float (where 0.1 is 10%) representing how much buffer time to calculate.
+
+Return Value:
+    An estimated time to travel the route that is slightly longer than the time intially calculated by the A* algorithm.
 '''
 def add_buffer_time(minutes, percentage):
     return math.ceil(minutes * (1 + percentage))
 
-
 '''
+A function to expand a given vertex.
+When A* visits an intersection, it needs to "expand" it - that is, generate all the neighboring intersections so that A* can look at those neighbors next.
+This function takes a given intersection (as a Vertex object) and produces a new Vertex object for each of its neighbors
+
 Inputs:
     vertex: a Vertex object
     graph:
@@ -66,7 +119,6 @@ def expand_vertex(vertex, graph):
         expanded_states.append(Vertex(neighbor, graph[neighbor].neighbors, graph[neighbor].coordinates))
      
     return expanded_states
-
 
 '''
 The 'Intersections' and 'Roads' attributes in the Roads and Intersections Geodataframes, respectively, are represented as a nested list.
@@ -86,9 +138,7 @@ def convert_string_to_list(bad_string):
     new_list = ast.literal_eval(bad_string)
     return new_list[0]
 
-
 # The following functions implement standard heap operations.
-
 # Each element in the heap is a Vertex object.
 
 # get the index of the parent node given a starting index i
@@ -196,10 +246,16 @@ def extract_min(heap, lookup):
     return min, heap
 
 '''
+A function to find the fastest route between two intersections.
+
 Inputs
-    node_dict:
+    node_dict: a dictionary where each key is where each key is a integer index into the intersections GeoDataFrame and each value is a Node object
     starting_intersection: a Vertex object
     goal_intersection: a Vertex object
+
+Return Value:
+    node_dict: the same node_dict from the inputs, but this time, the Node objects have been updated as A* has calculated a route
+    OR None: if no route is found
 '''
 def a_star(node_dict, starting_intersection, goal_intersection):
     # This dictionary contains Node objects, each of which keeps track of a corresponding Vertex object.
@@ -274,26 +330,38 @@ def a_star(node_dict, starting_intersection, goal_intersection):
     # if we reach this point, A* has failed to find a path from the starting state to the goal state
     return None
 
+'''
+A function to create a road network.
 
-# each key is an index into the intersections GeoDataFrame
-# each value is a Node object
-# IGNORE THIS COMMENT each value is a dictionary in the form {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
-# IGNORE THIS COMMENT each value is a list of strings that are themselves indices into the intersections GeoDataFrame (i.e. intersections that are one road segment away from the key intersection)
+Input:
+    intersections_geodataframe: a GeoDataFrame storing data for each intersection
+
+Return Value:
+    road_network: A Python dictionary where each key is an integer index into the intersections GeoDataFrame.
+                    Each value is a Node object.
+'''
 def construct_road_network(intersections_geodataframe):
     print('Constructing road network...')
     road_network = {}
     for intersection in intersections_geodataframe.itertuples():
         index = intersection.Index
         neighbors = convert_string_to_list(intersection.NeighboringIntersections)   # neighbors is now a list with one element, which is a dictionary
-            # the dictionary is structured {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
-        neighbors = neighbors[0]    # get the dictionary out of the list
-        # road_network[index] = neighbors
-        # neighbor_indices = list(neighbors.keys())
-        # road_network[index] = neighbor_indices
+        neighbors = neighbors[0]    # get the dictionary out of the list; the dictionary is structured {<vertex_of_neighboring_intersection>: <cost_to_reach_that_intersection>}
         road_network[index] = Node(neighbors, [intersections_geodataframe.iloc[index].geometry.x, intersections_geodataframe.iloc[index].geometry.y])
     
     return road_network
 
+'''
+A function to get user input for the intersections where the route should start and stop.
+
+Inputs:
+    upperbound: an integer representing the total number of intersections in the data
+    lowerbound: an integer representing the lowest value for an intersection - default is 0, which should never change
+
+Return Values:
+    start_idx: an integer index into the intersections GeoDataFrame representing which intersection the route starts at
+    end_idx: an integer index into the intersections GeoDataFrame representing which intersection the route ends at
+'''
 # get user input for where the route should start and stop
 def get_start_and_end_points(upperbound, lowerbound=0):
     start_idx = ''
@@ -322,11 +390,13 @@ def get_start_and_end_points(upperbound, lowerbound=0):
     return start_idx, end_idx
 
 '''
+A function to initialize two Vertex objects, one each associated with the starting and stopping intersections.
+
 Inputs:
-    road_network:
-    intersections_geodataframe:
-    start_idx:
-    end_idx:
+    road_network: a dictionary where each key is where each key is a integer index into the intersections GeoDataFrame and each value is a Node object
+    intersections_geodataframe: a GeoDataFrame storing data for each intersection
+    start_idx: an integer index into the intersections GeoDataFrame representing which intersection the route starts at
+    end_idx: an integer index into the intersections GeoDataFrame representing which intersection the route ends at
 
 Return Values:
     start_intersection: a Vertex object
@@ -340,10 +410,15 @@ def initialize_start_and_stop_intersections(road_network, intersections_geodataf
     return start_intersection, destination_intersection
 
 '''
+A function to run the A* algorithm.
+
 Inputs:
-    roads: 
+    roads: a dictionary where each key is where each key is a integer index into the intersections GeoDataFrame and each value is a Node object
     start_intersection: a Vertex object
     goal_intersection: a Vertex object
+
+Return Value:
+    nodes: the road network (a dictionary) where the values (Node objects) have been updated as A* has calculated a route
 '''
 def run_astar(roads, start_intersection, goal_intersection):
     print('Running A*...')
@@ -355,12 +430,22 @@ def run_astar(roads, start_intersection, goal_intersection):
 
     return nodes
 
+'''
+A function to construct the shortest path that A* found.
+
+Inputs:
+    nodes: the road network (a dictionary) where the values (Node objects) have been updated as A* has calculated a route
+    destination_intersection: a Vertex object
+
+Return Value:
+    path: a list of integer indices into the intersections GeoDataFrame that contain the intersections that make up the fastest route
+'''
 def build_path(nodes, destination_intersection):
     if nodes == None:
         print('Failed to find a path from the starting state to the goal state.')
         return None
     else:
-        # using the prev attribute of each Node, construct the shortest path from the goal state to the beginning state, then reverse it to find the true path
+        # using the prev attribute (an int) of each Node, construct the shortest path from the goal state to the beginning state, then reverse it to find the true path
         path = []
         path.append(destination_intersection.index)
         prev = nodes[destination_intersection.index].prev
@@ -383,6 +468,14 @@ def build_path(nodes, destination_intersection):
 
         return path
     
+'''
+A function to plot the route.
+
+Inputs:
+    path: a list of integer indices into the intersections GeoDataFrame that contain the intersections that make up the fastest route
+    intersections_geodataframe: A GeoDataFrame storing the data for each intersection
+    roads_geodataframe: A GeoDataFrame storing the data for each road
+'''
 def plot_path(path, intersections_geodataframe, roads_geodataframe):
     if path is not None:
 
